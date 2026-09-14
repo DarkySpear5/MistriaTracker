@@ -66,8 +66,8 @@ identifier, but live testing remains Ari-only until this checklist passes.
 
 ## Source review package
 
-This repository is published so Vortex/VirusTotal reviewers can inspect the
-complete companion and desktop-app source. The repository intentionally excludes
+This repository contains the complete companion and desktop-app source for
+independent review. It intentionally excludes
 game saves, save backups, local diagnostics, dependency caches, and generated
 installer binaries. The installer recipe is included in `tools/installer.nsi`.
 
