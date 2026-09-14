@@ -92,3 +92,6 @@ pnpm tauri build --no-bundle
 The Windows installer script is `tools/installer.nsi`; it consumes the release
 executable produced by Tauri. No signing certificate or credentials are stored
 in this repository.
+
+For a lower-friction distribution, build a portable ZIP and its checksum with
+`pnpm package:portable`. It runs without installation or administrator access.

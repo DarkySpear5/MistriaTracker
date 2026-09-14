@@ -10,3 +10,6 @@ diagnostics/
 tools/nsis-setup.exe
 tools/installer/*.exe
 tools/installer/*.rar
+dist-portable/
+MistriaTracker-*-portable.zip
+MistriaTracker-*-portable.zip.sha256
