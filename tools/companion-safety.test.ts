@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const COMPANION_GML = resolve(REPOSITORY_ROOT, 'companion/mistria_tracker_companion/gml/MistriaTrackerCompanion.gml');
 const MANIFEST = resolve(REPOSITORY_ROOT, 'companion/mistria_tracker_companion/manifest.json');
+const INSTALLER_SCRIPT = resolve(REPOSITORY_ROOT, 'tools/installer.nsi');
 
 const FORBIDDEN_API_PATTERNS = [
   /\b(?:save|load)\s*(?:_|\.)\s*[A-Za-z0-9_]+\s*\(/i,
@@ -165,6 +166,15 @@ function extractFunction(source: string, name: string): string {
 }
 
 describe('passive companion safety boundary', () => {
+  it('offers an optional companion install that only copies mod files into a selected mods folder', () => {
+    const installer = readFileSync(INSTALLER_SCRIPT, 'utf8');
+
+    expect(installer).toContain('Section /o "Live tracking companion (MOMI)"');
+    expect(installer).toContain('nsDialogs::SelectFolderDialog');
+    expect(installer).toContain('SetOutPath "$CompanionModsPath\\MistriaTrackerCompanion"');
+    expect(installer).toContain('File /r "..\\companion\\mistria_tracker_companion\\*.*"');
+    expect(installer).not.toContain('.sav');
+  });
   it('permits one failure-safe non-mutating filter and no prohibited API family', () => {
     const gml = readFileSync(COMPANION_GML, 'utf8');
     expect(gml.match(/mmapi_filter\s*\(/g)).toHaveLength(1);

@@ -9,10 +9,11 @@ to write an isolated event log. It never edits a Fields of Mistria save file.
 The desktop tracker and the game companion are separate:
 
 1. Install MOMI/Mods of Mistria **0.14.1 or newer**.
-2. Install the desktop tracker using the installer, or extract the portable ZIP
-   and run `MistriaTracker.exe` if the installer is blocked.
-3. Extract `MistriaTracker-Companion-0.1.0.zip` and copy the
-   `MistriaTrackerCompanion` folder directly into the game's `mods` folder:
+2. Run the `0.1.1` installer and tick **Live tracking companion (MOMI)**. When
+   prompted, select the Fields of Mistria `mods` folder. The installer copies
+   only the companion files; it never reads or modifies saves.
+3. If the installer is blocked, extract the portable ZIP and manually copy the
+   companion folder into the game's `mods` folder:
 
    ```text
    Fields of Mistria/mods/MistriaTrackerCompanion/

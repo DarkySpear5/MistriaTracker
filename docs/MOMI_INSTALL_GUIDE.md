@@ -14,16 +14,21 @@ the game is running. The companion does not edit saves or replace game values.
 
 ## Install the desktop app
 
-1. If the installer is blocked, use the portable ZIP instead: extract it and
-   run `MistriaTracker.exe`. It does not need administrator access.
-2. Otherwise run `MistriaTracker-0.1.0-setup.exe` as a normal user.
-3. Launch **Mistria Tracker**.
-4. Keep only one tracker window open. A second launch is refused and focuses the
+1. Run `MistriaTracker-0.1.1-setup.exe` as a normal user. It does not need
+   administrator access.
+2. In the installer, optionally tick **Live tracking companion (MOMI)**. Select
+   the game's `mods` folder when prompted. The installer copies only the
+   companion files and never reads or modifies a save.
+3. If the installer is blocked, use the portable ZIP instead: extract it and
+   run `MistriaTracker.exe`.
+4. Launch **Mistria Tracker**.
+5. Keep only one tracker window open. A second launch is refused and focuses the
    existing window.
 
 ## Install the companion with MOMI
 
-1. Download and extract `MistriaTracker-Companion-0.1.0.zip`. From source,
+1. If you skipped the companion during installation, download and extract
+   `MistriaTracker-Companion-0.1.1.zip`. From source,
    create it with `pnpm package:companion`.
 2. Copy the extracted `MistriaTrackerCompanion` folder directly into the
    Fields of Mistria `mods` folder. Do not nest it inside another folder.
