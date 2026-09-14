@@ -43,6 +43,38 @@ the game is running. The companion does not edit saves or replace game values.
    appears. The tracker reads the companion's isolated log; it never writes to a
    Fields of Mistria save.
 
+## If the tracker finds nothing
+
+Installing the desktop tracker alone is not enough for live tracking. The
+desktop app does not scan arbitrary save files or choose a profile automatically
+because doing so could read the wrong save. It waits for the companion's
+isolated event log.
+
+Check all of the following:
+
+1. MOMI/Mods of Mistria 0.14.1 or newer is installed.
+2. Fields of Mistria was started through MOMI after the companion was copied.
+3. The companion has this exact layout:
+
+   ```text
+   Fields of Mistria/
+   └─ mods/
+      └─ MistriaTrackerCompanion/
+         ├─ manifest.json
+         └─ gml/
+            └─ MistriaTrackerCompanion.gml
+   ```
+
+   Do not leave an extra nested folder such as
+   `mods/MistriaTrackerCompanion/MistriaTrackerCompanion/`.
+4. The tracker Settings page reports that the catalog is approved and the
+   companion log is ready.
+5. A disposable character is loaded and one new item or event is performed.
+
+If the readiness check remains paused, close the game, correct the companion
+layout, start the game through MOMI again, and rerun the check. Never delete,
+move, or overwrite an important save to troubleshoot the tracker.
+
 ## Spoiler and language settings
 
 Spoiler-free mode is the default. Unknown entries remain hidden until observed.
