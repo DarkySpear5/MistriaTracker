@@ -1,4 +1,4 @@
-# Mistria Tracker — Vortex installation guide
+# Mistria Tracker — MOMI installation guide
 
 ## What is required
 
@@ -6,7 +6,7 @@
 - Fields of Mistria installed and updated
 - MOMI/Mods of Mistria 0.14.1 or newer
 - The Mistria Tracker desktop app installer, or its portable ZIP
-- The companion mod enabled in Vortex
+- The companion mod copied into the game's mods folder
 
 The desktop app and the companion are separate. The installer or portable ZIP gives you the
 tracker interface; the companion is what passively reports discoveries while
@@ -21,15 +21,16 @@ the game is running. The companion does not edit saves or replace game values.
 4. Keep only one tracker window open. A second launch is refused and focuses the
    existing window.
 
-## Install the companion with Vortex
+## Install the companion with MOMI
 
-1. Download `MistriaTracker-Companion-0.1.0.zip` from the project release. From
-   source, create it with `pnpm package:companion`.
-2. In Vortex, install that companion ZIP as a mod, then enable and deploy it.
-3. Confirm that the deployed folder contains `manifest.json` and
+1. Download and extract `MistriaTracker-Companion-0.1.0.zip`. From source,
+   create it with `pnpm package:companion`.
+2. Copy the extracted `MistriaTrackerCompanion` folder directly into the
+   Fields of Mistria `mods` folder. Do not nest it inside another folder.
+3. Confirm that the installed folder contains `manifest.json` and
    `gml/MistriaTrackerCompanion.gml` directly under the mod folder. Do not nest
    it inside a second `MistriaTracker` folder.
-4. Start Fields of Mistria through Vortex/MOMI.
+4. Start Fields of Mistria through MOMI.
 
 ## First-run checklist
 
