@@ -95,3 +95,5 @@ in this repository.
 
 For a lower-friction distribution, build a portable ZIP and its checksum with
 `pnpm package:portable`. It runs without installation or administrator access.
+
+End-user setup is documented in [`docs/VORTEX_INSTALL_GUIDE.md`](docs/VORTEX_INSTALL_GUIDE.md).
