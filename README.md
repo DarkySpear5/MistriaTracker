@@ -1,6 +1,6 @@
 # Mistria Tracker
 
-Mistria Tracker is a private, native Windows companion for Fields of Mistria.
+Mistria Tracker is an open-source, native Windows companion for Fields of Mistria.
 It keeps its own tracker database and uses a passive MOMI/MMAPI companion only
 to write an isolated event log. It never edits a Fields of Mistria save file.
 
@@ -29,6 +29,19 @@ The desktop app alone cannot detect live discoveries. It waits for the
 companion's isolated event log and does not scan or modify arbitrary save files.
 See the [complete MOMI installation and troubleshooting guide](docs/MOMI_INSTALL_GUIDE.md)
 if nothing appears.
+
+## Code signing policy
+
+Official release artifacts are built from the public `main` branch, tested, and
+manually approved by the project maintainer before signing and publication.
+The maintainer (`DarkySpear5`) is the committer, reviewer, and release approver
+for this solo-maintained project. The program does not transfer information to
+other networked systems unless the user explicitly requests it.
+
+Pending SignPath Foundation approval, free code signing will be provided by
+[SignPath.io](https://about.signpath.io/), with the certificate issued by
+[SignPath Foundation](https://signpath.org/). See the full
+[code signing policy](CODE_SIGNING_POLICY.md) and [privacy policy](PRIVACY.md).
 
 ## Safety contract
 
