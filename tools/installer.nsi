@@ -2,9 +2,9 @@ Unicode true
 Name "Mistria Tracker"
 Icon "..\src-tauri\icons\icon.ico"
 UninstallIcon "..\src-tauri\icons\icon.ico"
-OutFile "installer\\MistriaTracker-0.1.1-setup.exe"
+OutFile "installer\\MistriaTracker-0.1.2-setup.exe"
 InstallDir "$LOCALAPPDATA\\Mistria Tracker"
-RequestExecutionLevel user
+RequestExecutionLevel highest
 ShowInstDetails show
 ShowUnInstDetails show
 

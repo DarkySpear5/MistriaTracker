@@ -48,19 +48,19 @@ jobs:
         shell: pwsh
         run: |
           & 'C:\Program Files (x86)\NSIS\makensis.exe' /V2 tools\installer.nsi
-          $installer = 'tools\installer\MistriaTracker-0.1.1-setup.exe'
+          $installer = 'tools\installer\MistriaTracker-0.1.2-setup.exe'
           $hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash
-          Set-Content -LiteralPath "$installer.sha256" -Value "$hash  MistriaTracker-0.1.1-setup.exe" -Encoding ASCII
+          Set-Content -LiteralPath "$installer.sha256" -Value "$hash  MistriaTracker-0.1.2-setup.exe" -Encoding ASCII
 
       - name: Upload unsigned artifact for SignPath
         id: upload_unsigned
         uses: actions/upload-artifact@v4
         with:
-          name: mistria-tracker-0.1.1-unsigned
+          name: mistria-tracker-0.1.2-unsigned
           if-no-files-found: error
           path: |
-            tools/installer/MistriaTracker-0.1.1-setup.exe
-            tools/installer/MistriaTracker-0.1.1-setup.exe.sha256
+            tools/installer/MistriaTracker-0.1.2-setup.exe
+            tools/installer/MistriaTracker-0.1.2-setup.exe.sha256
 
       # The SignPath signing action is added after SignPath Foundation approves
       # this project and provides the organization, project, and policy values.
