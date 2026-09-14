@@ -4,6 +4,31 @@ Mistria Tracker is a private, native Windows companion for Fields of Mistria.
 It keeps its own tracker database and uses a passive MOMI/MMAPI companion only
 to write an isolated event log. It never edits a Fields of Mistria save file.
 
+## Installation
+
+The desktop tracker and the game companion are separate:
+
+1. Install MOMI/Mods of Mistria **0.14.1 or newer**.
+2. Install the desktop tracker using the installer, or extract the portable ZIP
+   and run `MistriaTracker.exe` if the installer is blocked.
+3. Extract `MistriaTracker-Companion-0.1.0.zip` and copy the
+   `MistriaTrackerCompanion` folder directly into the game's `mods` folder:
+
+   ```text
+   Fields of Mistria/mods/MistriaTrackerCompanion/
+   ├─ manifest.json
+   └─ gml/MistriaTrackerCompanion.gml
+   ```
+
+4. Start Fields of Mistria through MOMI, then open Mistria Tracker.
+5. In Settings, run the read-only readiness check. Start with a disposable
+   character and obtain one item to confirm tracking.
+
+The desktop app alone cannot detect live discoveries. It waits for the
+companion's isolated event log and does not scan or modify arbitrary save files.
+See the [complete MOMI installation and troubleshooting guide](docs/MOMI_INSTALL_GUIDE.md)
+if nothing appears.
+
 ## Safety contract
 
 - The tracker database, preferences, and notes are app-owned local data.
