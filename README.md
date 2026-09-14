@@ -47,22 +47,22 @@ dotnet run --project ModsOfMistriaCommandLine -- --lint `
 Do not install a companion that MOMI reports as skipped. MOMI validates the
 entire mod before it writes game scripts.
 
-## Ari-only live validation
+## Disposable-profile live validation
 
-Until live validation is complete, use only the disposable character **Ari**:
+Until live validation is complete, use only a newly created disposable character:
 
-1. Do not open, list, copy, read, or select the Amelia save.
+1. Do not open, list, copy, read, or select an important save.
 2. Run the preflight above. A failed or unavailable preflight means no install.
 3. Put the unpacked companion folder directly under the game `mods` folder and
    run MOMI only after the preflight passes.
-4. Launch Fields of Mistria, select Ari yourself, and obtain or gift one known
+4. Launch Fields of Mistria, select the disposable character yourself, and obtain or gift one known
    item.
 5. Verify only the companion log. Do not inspect any game save file.
 6. Confirm the tracker recorded the event only after the desktop readiness gate
    approves the installed game build.
 
 The eventual tracker supports any profile through its numeric tracker profile
-identifier, but live testing remains Ari-only until this checklist passes.
+identifier, but live testing remains limited to a disposable profile until this checklist passes.
 
 ## Source review package
 

@@ -15,7 +15,7 @@ This percentage refers to the agreed redesign, not all future game/Steam complet
 - Correct French game translation keys.
 - Automatic startup import; cheap log-availability recheck when companion starts later.
 - 76 frontend tests passed; Rust regression suite passed before the final reconnect command; focused journal tests and Rust clippy passed after portrait extraction.
-- Real approved Amelia backup read-only test passed and checked source immutability.
+- Real approved disposable-profile backup read-only test passed and checked source immutability.
 - Native release built successfully; deployment/launch verification still pending at writing.
 
 ## Still open — do not call this 100%
