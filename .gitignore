@@ -13,3 +13,5 @@ tools/installer/*.rar
 dist-portable/
 MistriaTracker-*-portable.zip
 MistriaTracker-*-portable.zip.sha256
+dist-companion/
+MistriaTracker-Companion-*.zip

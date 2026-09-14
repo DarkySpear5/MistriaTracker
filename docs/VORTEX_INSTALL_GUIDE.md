@@ -5,27 +5,28 @@
 - Windows 10 or Windows 11 (64-bit)
 - Fields of Mistria installed and updated
 - MOMI/Mods of Mistria 0.14.1 or newer
-- The Mistria Tracker desktop app installer
+- The Mistria Tracker desktop app installer, or its portable ZIP
 - The companion mod enabled in Vortex
 
-The desktop app and the companion are separate. The installer gives you the
+The desktop app and the companion are separate. The installer or portable ZIP gives you the
 tracker interface; the companion is what passively reports discoveries while
 the game is running. The companion does not edit saves or replace game values.
 
 ## Install the desktop app
 
-1. Run `MistriaTracker-0.1.0-setup.exe` as a normal user. Administrator access
-   should not be required.
-2. Launch **Mistria Tracker** from the Start menu.
-3. Keep only one tracker window open. A second launch is refused and focuses the
+1. If the installer is blocked, use the portable ZIP instead: extract it and
+   run `MistriaTracker.exe`. It does not need administrator access.
+2. Otherwise run `MistriaTracker-0.1.0-setup.exe` as a normal user.
+3. Launch **Mistria Tracker**.
+4. Keep only one tracker window open. A second launch is refused and focuses the
    existing window.
 
 ## Install the companion with Vortex
 
-1. In the GitHub repository, download the repository ZIP or the companion folder
-   from `companion/mistria_tracker_companion`.
-2. In Vortex, install the mod from the downloaded ZIP, then enable and deploy it.
-3. Confirm that the deployed folder contains the companion `manifest.json` and
+1. Download `MistriaTracker-Companion-0.1.0.zip` from the project release. From
+   source, create it with `pnpm package:companion`.
+2. In Vortex, install that companion ZIP as a mod, then enable and deploy it.
+3. Confirm that the deployed folder contains `manifest.json` and
    `gml/MistriaTrackerCompanion.gml` directly under the mod folder. Do not nest
    it inside a second `MistriaTracker` folder.
 4. Start Fields of Mistria through Vortex/MOMI.

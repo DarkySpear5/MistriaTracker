@@ -13,6 +13,7 @@
 		"typecheck": "tsc --noEmit -p tsconfig.app.json",
 		"build": "tsc -b && vite build",
 		"package:portable": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/package-portable.ps1",
+		"package:companion": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/package-companion.ps1",
 		"tauri": "tauri"
 	},
 	"dependencies": {
