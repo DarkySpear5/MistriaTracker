@@ -1,0 +1,66 @@
+name: Build Windows release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out public source
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.19.0'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install JavaScript dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify application source
+        run: |
+          pnpm test -- --run
+          pnpm typecheck
+          cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: Build the unsigned desktop executable
+        run: pnpm tauri build --no-bundle
+
+      - name: Install NSIS
+        run: choco install nsis --no-progress --yes
+
+      - name: Build the unsigned installer and checksum
+        shell: pwsh
+        run: |
+          & 'C:\Program Files (x86)\NSIS\makensis.exe' /V2 tools\installer.nsi
+          $installer = 'tools\installer\MistriaTracker-0.1.1-setup.exe'
+          $hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash
+          Set-Content -LiteralPath "$installer.sha256" -Value "$hash  MistriaTracker-0.1.1-setup.exe" -Encoding ASCII
+
+      - name: Upload unsigned artifact for SignPath
+        id: upload_unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: mistria-tracker-0.1.1-unsigned
+          if-no-files-found: error
+          path: |
+            tools/installer/MistriaTracker-0.1.1-setup.exe
+            tools/installer/MistriaTracker-0.1.1-setup.exe.sha256
+
+      # The SignPath signing action is added after SignPath Foundation approves
+      # this project and provides the organization, project, and policy values.
