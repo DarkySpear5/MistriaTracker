@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Mistria Tracker Companion Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "companion_version",
+    "game_version",
+    "profile_id",
+    "session_id",
+    "sequence",
+    "type"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "companion_version": { "type": "string", "minLength": 1 },
+    "game_version": { "type": "string", "minLength": 1 },
+    "profile_id": { "type": "string", "pattern": "^[0-9]+$" },
+    "session_id": { "type": "string", "format": "uuid" },
+    "sequence": { "type": "integer", "minimum": 0 },
+    "type": {
+      "type": "string",
+      "enum": [
+        "profile_activated",
+        "item_obtained",
+        "gift_given",
+        "museum_donated"
+      ]
+    },
+    "payload": { "type": "object" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "profile_activated" } } },
+      "then": {
+        "not": { "required": ["payload"] }
+      }
+    },
+    {
+      "if": { "properties": { "type": { "const": "item_obtained" } } },
+      "then": {
+        "required": ["payload"],
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["item_id", "count"],
+            "properties": {
+              "item_id": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$" },
+              "count": { "type": "integer", "minimum": 1 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "type": { "const": "gift_given" } } },
+      "then": {
+        "required": ["payload"],
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["npc_id", "item_id", "reaction"],
+            "properties": {
+              "npc_id": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$" },
+              "item_id": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$" },
+              "reaction": { "enum": ["loved", "liked", "neutral", "disliked", "hated"] }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "type": { "const": "museum_donated" } } },
+      "then": {
+        "required": ["payload"],
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["item_id"],
+            "properties": {
+              "item_id": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$" },
+              "set_id": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

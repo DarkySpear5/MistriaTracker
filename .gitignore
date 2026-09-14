@@ -1,0 +1,12 @@
+.worktrees/
+.superpowers/
+node_modules/
+dist/
+*.tsbuildinfo
+src-tauri/target/
+src-tauri/src-tauri/.import-release/
+.codex-release/
+diagnostics/
+tools/nsis-setup.exe
+tools/installer/*.exe
+tools/installer/*.rar

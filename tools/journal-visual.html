@@ -1,0 +1,8 @@
+<!doctype html><html lang="fr"><meta charset="utf-8"><title>Local journal visual check</title><div id="root"></div><script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { App } from '/src/app/App.tsx';
+import '/src/app/journal.css';
+const [journal,images]=await Promise.all([fetch('/diagnostics/journal-preview/journal.json').then(r=>r.json()),fetch('/diagnostics/journal-preview/art.json').then(r=>r.json())]);
+createRoot(document.getElementById('root')).render(React.createElement(App,{initialJournal:journal,language:'fra',nativeRuntime:()=>false,artLoader:async keys=>Object.fromEntries(keys.map(key=>[key,images[key]??null]))}));
+</script></html>

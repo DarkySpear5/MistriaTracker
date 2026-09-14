@@ -1,0 +1,20 @@
+{
+  "records": [
+    {
+      "game_version": "1.0.4",
+      "event_schema_versions": [1],
+      "companion_versions": ["0.1.x"],
+      "save_parser_versions": [1],
+      "catalog_parser_versions": [1],
+      "probe_required": false
+    },
+    {
+      "game_version": "catalog-sha256:64ab4a5bb24e4518c1682d531313711373d99c6cdaf6afed9c2392431cdbc6c9",
+      "event_schema_versions": [],
+      "companion_versions": [],
+      "save_parser_versions": [],
+      "catalog_parser_versions": [1],
+      "probe_required": false
+    }
+  ]
+}

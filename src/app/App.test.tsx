@@ -1,0 +1,315 @@
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { invoke } from "@tauri-apps/api/core";
+import { App } from "./App";
+import { testJournal } from "../journal/test-fixture";
+vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
+vi.mock("@tauri-apps/api/path", () => ({
+  join: vi.fn().mockResolvedValue("C:/Test/mod_data"),
+  localDataDir: vi.fn().mockResolvedValue("C:/Test"),
+}));
+const preview = () =>
+  render(
+    <App
+      initialJournal={testJournal}
+      nativeRuntime={() => false}
+      artLoader={async () => ({})}
+    />,
+  );
+const nav = (name: string) =>
+  fireEvent.click(
+    within(screen.getByRole("navigation")).getByRole("button", {
+      name: new RegExp(name),
+    }),
+  );
+const search = (query: string) =>
+  fireEvent.change(screen.getByRole("combobox", { name: /search/i }), {
+    target: { value: query },
+  });
+describe("Desktop journal", () => {
+  it("recovers polling status and notices a profile change without item events", async () => {
+    let offline = false;
+    let active = "ari";
+    let starts = 0;
+    vi.useFakeTimers();
+    vi.mocked(invoke).mockImplementation(async (command) => {
+      if (command === "get_preferences")
+        return { language: "eng", spoiler_mode: "free", hints_enabled: false };
+      if (command === "get_profile_summary")
+        return { active_profile: active, profiles: ["ari", "amelia"] };
+      if (command === "get_journal_snapshot")
+        return {
+          ...testJournal,
+          profile: {
+            id: active,
+            name: active === "ari" ? "Ari" : "Amelia",
+            farm: "Test Farm",
+          },
+        };
+      if (command === "poll_live_tracking") {
+        if (offline) throw new Error("Temporary log access failure");
+        return 0;
+      }
+      if (command === "start_live_tracking") {
+        if (++starts > 1) throw new Error("Must not throw away unread cursor");
+        return;
+      }
+      throw new Error("Unexpected command " + command);
+    });
+    try {
+      render(
+        <App
+          nativeRuntime={() => true}
+          readinessProbe={async () => ({
+            catalog: { game_version: "verified", item_count: 3 },
+            catalog_approved: true,
+            companion_log_found: true,
+          })}
+          importExisting={async () => ({
+            profile_id: "ari",
+            discovered_items: 2,
+            imported: false,
+          })}
+        />,
+      );
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+      offline = true;
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1500);
+      });
+      expect(
+        screen.getByRole("heading", { name: "Tracking unavailable" }),
+      ).toBeVisible();
+      offline = false;
+      active = "amelia";
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1500);
+      });
+      expect(
+        screen.getByRole("heading", { name: "Live tracking ready" }),
+      ).toBeVisible();
+      expect(screen.getByText("Amelia")).toBeVisible();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it("connects automatically when the companion appears after startup", async () => {
+    let companion = false;
+    vi.useFakeTimers();
+    vi.mocked(invoke).mockImplementation(async (command) => {
+      if (command === "get_preferences")
+        return { language: "eng", spoiler_mode: "free", hints_enabled: false };
+      if (command === "get_profile_summary")
+        return { active_profile: "ari", profiles: ["ari"] };
+      if (command === "get_journal_snapshot") return testJournal;
+      if (command === "poll_live_tracking") return 0;
+      if (command === "companion_log_available") return companion;
+      if (command === "prepare_journal" || command === "start_live_tracking")
+        return;
+      throw new Error("Unexpected command " + command);
+    });
+    render(
+      <App
+        nativeRuntime={() => true}
+        readinessProbe={async () => ({
+          catalog: { game_version: "verified", item_count: 3 },
+          catalog_approved: true,
+          companion_log_found: companion,
+        })}
+        importExisting={async () => ({
+          profile_id: "ari",
+          discovered_items: 2,
+          imported: false,
+        })}
+      />,
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(screen.getAllByText("Ari").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    companion = true;
+    try {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30000);
+      });
+      expect(
+        screen.getByRole("heading", { name: "Live tracking ready" }),
+      ).toBeVisible();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it("uses donation status, not acquisition status, for Museum filters", () => {
+    preview();
+    nav("Museum");
+    fireEvent.change(screen.getByLabelText("Donated"), {
+      target: { value: "found" },
+    });
+    expect(
+      screen.queryByRole("button", { name: "Trout · Not donated yet" }),
+    ).not.toBeInTheDocument();
+  });
+  it("does not offer seasonal filtering for villagers", () => {
+    preview();
+    nav("Villagers");
+    expect(screen.getByLabelText("Season")).toBeDisabled();
+  });
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    vi.mocked(invoke).mockReset();
+  });
+  it("shows real profile progress and opens its category", () => {
+    preview();
+    expect(screen.getAllByText("Ari").length).toBeGreaterThan(0);
+    nav("Encyclopaedia");
+    fireEvent.click(screen.getByRole("button", { name: /Fish 2/ }));
+    expect(screen.getByRole("heading", { name: "Fish" })).toBeVisible();
+  });
+  it("offers multiple partial matches without exposing a hidden item", () => {
+    preview();
+    search("Trou");
+    expect(
+      within(screen.getByRole("listbox")).getAllByRole("option"),
+    ).toHaveLength(2);
+    expect(screen.getByRole("listbox")).not.toHaveTextContent("Undiscovered");
+  });
+  it("keeps a matching museum selection in Museum", () => {
+    preview();
+    nav("Museum");
+    search("Trou");
+    fireEvent.click(screen.getByRole("option", { name: /^Trout/ }));
+    expect(screen.getByRole("heading", { name: "Museum" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Trout" })).toBeVisible();
+  });
+  it("routes an elsewhere result to its encyclopedia category", () => {
+    preview();
+    nav("Museum");
+    search("rainbow");
+    fireEvent.click(within(screen.getByRole("listbox")).getByRole("option"));
+    expect(screen.getByRole("heading", { name: "Fish" })).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Rainbow Trout" }),
+    ).toBeVisible();
+  });
+  it("does not discard an edited note when navigation is cancelled", () => {
+    preview();
+    search("trout");
+    fireEvent.click(screen.getByRole("option", { name: /^Trout/ }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Your notes" }), {
+      target: { value: "Remember the pond" },
+    });
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    nav("Villagers");
+    expect(screen.getByRole("textbox", { name: "Your notes" })).toHaveValue(
+      "Remember the pond",
+    );
+  });
+  it("filters villagers by encountered status", () => {
+    preview();
+    nav("Villagers");
+    fireEvent.change(screen.getByLabelText("Discovered"), {
+      target: { value: "missing" },
+    });
+    expect(
+      screen.queryByRole("heading", { name: "Celine" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Someone to meet" }),
+    ).toBeVisible();
+  });
+  it("gives a hidden fish a useful cave clue without naming it", () => {
+    preview();
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("switch", { name: /gentle hints/i }));
+    nav("Encyclopaedia");
+    fireEvent.click(screen.getByRole("button", { name: /Fish 2 \/ 3/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Undiscovered/ }));
+    expect(screen.getByRole("dialog")).toHaveTextContent(/cave/i);
+    expect(screen.getByRole("dialog")).not.toHaveTextContent("Trout");
+  });
+  it("switches navigation and search labels to French", () => {
+    preview();
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Français" }));
+    expect(screen.getByRole("combobox", { name: /Rechercher/ })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Villageois" })).toBeVisible();
+  });
+  it("imports on startup even before the companion log exists", async () => {
+    let imported = false;
+    vi.mocked(invoke).mockImplementation(async (command) => {
+      if (command === "get_preferences")
+        return { language: "eng", spoiler_mode: "free", hints_enabled: false };
+      if (command === "get_profile_summary")
+        return { active_profile: "ari", profiles: ["ari"] };
+      if (command === "get_journal_snapshot")
+        return imported ? testJournal : null;
+      if (command === "prepare_journal") return;
+      throw new Error("Unexpected command " + command);
+    });
+    render(
+      <App
+        nativeRuntime={() => true}
+        readinessProbe={async () => ({
+          catalog: { game_version: "verified", item_count: 3 },
+          catalog_approved: true,
+          companion_log_found: false,
+        })}
+        importExisting={async () => {
+          imported = true;
+          return { profile_id: "ari", discovered_items: 2, imported: true };
+        }}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getAllByText("Ari").length).toBeGreaterThan(0),
+    );
+    expect(
+      screen.queryByText("Preparing your journal"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("uses the companion-confirmed live save before considering the desktop backup", async () => {
+    const backup = vi.fn();
+    vi.mocked(invoke).mockImplementation(async (command) => {
+      if (command === "get_preferences")
+        return { language: "eng", spoiler_mode: "free", hints_enabled: false };
+      if (command === "get_profile_summary")
+        return { active_profile: "ari", profiles: ["ari"] };
+      if (command === "get_journal_snapshot") return testJournal;
+      if (command === "start_live_tracking") return;
+      throw new Error("Unexpected command " + command);
+    });
+    render(
+      <App
+        nativeRuntime={() => true}
+        readinessProbe={async () => ({
+          catalog: { game_version: "verified", item_count: 3 },
+          catalog_approved: true,
+          companion_log_found: true,
+        })}
+        importExisting={backup}
+        reconcileLiveSave={async () => ({
+          profile_id: "ari",
+          discovered_items: 2,
+          imported: true,
+        })}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getAllByText("Ari").length).toBeGreaterThan(0));
+    expect(backup).not.toHaveBeenCalled();
+  });
+});
