@@ -47,6 +47,7 @@ jobs:
       - name: Build the unsigned installer and checksum
         shell: pwsh
         run: |
+          New-Item -ItemType Directory -Force -Path tools\installer | Out-Null
           & 'C:\Program Files (x86)\NSIS\makensis.exe' /V2 tools\installer.nsi
           $installer = 'tools\installer\MistriaTracker-0.1.2-setup.exe'
           $hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash
