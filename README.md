@@ -39,10 +39,10 @@ The maintainer (`DarkySpear5`) is the committer, reviewer, and release approver
 for this solo-maintained project. The program does not transfer information to
 other networked systems unless the user explicitly requests it.
 
-Pending SignPath Foundation approval, free code signing will be provided by
-[SignPath.io](https://about.signpath.io/), with the certificate issued by
-[SignPath Foundation](https://signpath.org/). See the full
-[code signing policy](CODE_SIGNING_POLICY.md) and [privacy policy](PRIVACY.md).
+Current releases are unsigned. Windows may show a reputation warning for a new
+release; only download official assets from this repository and verify the
+published SHA-256 checksum. See the full [code signing policy](CODE_SIGNING_POLICY.md)
+and [privacy policy](PRIVACY.md).
 
 ## Safety contract
 
