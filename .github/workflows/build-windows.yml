@@ -33,10 +33,14 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Verify application source
+        shell: pwsh
         run: |
           pnpm test -- --run
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm typecheck
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo test --manifest-path src-tauri/Cargo.toml
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build the unsigned desktop executable
         run: pnpm tauri build --no-bundle

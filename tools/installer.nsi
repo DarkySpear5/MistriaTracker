@@ -36,8 +36,8 @@ Section /o "Live tracking companion (MOMI)"
   Pop $CompanionModsPath
   StrCmp $CompanionModsPath "error" companion_skipped
   StrCmp $CompanionModsPath "" companion_skipped
-  SetOutPath "$CompanionModsPath\\MistriaTrackerCompanion"
-  File /r "..\\companion\\mistria_tracker_companion\\*.*"
+  SetOutPath "$CompanionModsPath\MistriaTrackerCompanion"
+  File /r "..\companion\mistria_tracker_companion\*.*"
   companion_skipped:
 SectionEnd
 
