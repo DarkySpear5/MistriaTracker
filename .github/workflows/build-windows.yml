@@ -53,15 +53,14 @@ jobs:
           $hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash
           Set-Content -LiteralPath "$installer.sha256" -Value "$hash  MistriaTracker-0.1.2-setup.exe" -Encoding ASCII
 
-      - name: Upload unsigned artifact for SignPath
+      - name: Upload unsigned Windows build artifact
         id: upload_unsigned
         uses: actions/upload-artifact@v4
         with:
-          name: mistria-tracker-0.1.2-unsigned
+          name: mistria-tracker-0.1.2-windows-unsigned
           if-no-files-found: error
           path: |
             tools/installer/MistriaTracker-0.1.2-setup.exe
             tools/installer/MistriaTracker-0.1.2-setup.exe.sha256
 
-      # The SignPath signing action is added after SignPath Foundation approves
-      # this project and provides the organization, project, and policy values.
+      # A future trusted-signing provider may consume this verified artifact.
