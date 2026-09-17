@@ -169,8 +169,12 @@ describe('passive companion safety boundary', () => {
   it('offers an optional companion install that only copies mod files into a selected mods folder', () => {
     const installer = readFileSync(INSTALLER_SCRIPT, 'utf8');
 
+    const componentsPage = installer.indexOf('Page components');
+    const directoryPage = installer.indexOf('Page directory');
+    expect(componentsPage, 'expected an installer components-choice page').toBeGreaterThanOrEqual(0);
+    expect(componentsPage, 'expected the components-choice page before the destination page').toBeLessThan(directoryPage);
     expect(installer).toContain('RequestExecutionLevel highest');
-    expect(installer).toContain('Section /o "Live tracking companion (MOMI)"');
+    expect(installer).toContain('Section /o "Live tracking companion (MOMI, recommended)"');
     expect(installer).toContain('nsDialogs::SelectFolderDialog');
     expect(installer).toContain('SetOutPath "$CompanionModsPath\\MistriaTrackerCompanion"');
     expect(installer).toContain('File /r "..\\companion\\mistria_tracker_companion\\*.*"');

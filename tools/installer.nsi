@@ -2,7 +2,7 @@ Unicode true
 Name "Mistria Tracker"
 Icon "..\src-tauri\icons\icon.ico"
 UninstallIcon "..\src-tauri\icons\icon.ico"
-OutFile "installer\\MistriaTracker-0.1.2-setup.exe"
+OutFile "installer\\MistriaTracker-0.1.3-setup.exe"
 InstallDir "$LOCALAPPDATA\\Mistria Tracker"
 RequestExecutionLevel highest
 ShowInstDetails show
@@ -17,6 +17,7 @@ Function .onInit
   StrCpy $CompanionModsPath "$CompanionModsPath\\steamapps\\common\\Fields of Mistria\\mods"
 FunctionEnd
 
+Page components
 Page directory
 Page instfiles
 UninstPage uninstConfirm
@@ -31,7 +32,7 @@ Section "Mistria Tracker"
   CreateShortcut "$SMPROGRAMS\\Mistria Tracker\\Uninstall Mistria Tracker.lnk" "$INSTDIR\\Uninstall Mistria Tracker.exe"
 SectionEnd
 
-Section /o "Live tracking companion (MOMI)"
+Section /o "Live tracking companion (MOMI, recommended)"
   nsDialogs::SelectFolderDialog "Choose your Fields of Mistria mods folder" "$CompanionModsPath"
   Pop $CompanionModsPath
   StrCmp $CompanionModsPath "error" companion_skipped
