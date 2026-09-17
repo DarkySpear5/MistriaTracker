@@ -8,26 +8,19 @@ to write an isolated event log. It never edits a Fields of Mistria save file.
 
 The desktop tracker and the game companion are separate:
 
-1. Install MOMI/Mods of Mistria **0.14.1 or newer**.
-2. Run the `0.1.3` installer and tick **Live tracking companion (MOMI, recommended)**. When
-   prompted, select the Fields of Mistria `mods` folder. The installer copies
-   only the companion files; it never reads or modifies saves. Windows may ask
-   for administrator approval when the game is installed in a protected folder.
-3. If the installer is blocked, extract the portable ZIP and manually copy the
-   companion folder into the game's `mods` folder:
-
-   ```text
-   Fields of Mistria/mods/MistriaTrackerCompanion/
-   ├─ manifest.json
-   └─ gml/MistriaTrackerCompanion.gml
-   ```
-
+1. To track new discoveries while playing, install MOMI/Mods of Mistria
+   **0.14.1 or newer** first.
+2. Run `MistriaTracker-0.1.3-setup.exe` and install it normally.
+3. On the installer's Components page, tick **Live tracking companion (MOMI,
+   recommended)**. When asked, choose the Fields of Mistria `mods` folder.
 4. Start Fields of Mistria through MOMI, then open Mistria Tracker.
-5. In Settings, run the read-only readiness check. Start with a disposable
-   character and obtain one item to confirm tracking.
+5. The tracker automatically loads existing discoveries when it opens. With
+   MOMI and the companion installed, it also begins tracking new discoveries
+   automatically while you play.
 
-The desktop app alone cannot detect live discoveries. It waits for the
-companion's isolated event log and does not scan or modify arbitrary save files.
+MOMI is only needed for live tracking. Without it, Mistria Tracker can still
+show discoveries already found from its local tracker data. The tracker never
+edits a Fields of Mistria save file.
 See the [complete MOMI installation and troubleshooting guide](docs/MOMI_INSTALL_GUIDE.md)
 if nothing appears.
 
@@ -133,7 +126,8 @@ The Windows installer script is `tools/installer.nsi`; it consumes the release
 executable produced by Tauri. No signing certificate or credentials are stored
 in this repository.
 
-For a lower-friction distribution, build a portable ZIP and its checksum with
-`pnpm package:portable`. It runs without installation or administrator access.
+Maintainers can build a portable ZIP and its checksum with
+`pnpm package:portable`. It is a developer distribution option and is not part
+of the official 0.1.3 release.
 
 End-user setup is documented in [`docs/MOMI_INSTALL_GUIDE.md`](docs/MOMI_INSTALL_GUIDE.md).
