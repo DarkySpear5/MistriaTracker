@@ -9,8 +9,10 @@ import {
   pollLiveTracking,
   probeReadiness,
   reconcileActiveLiveSave,
+  resolveGameDirectory,
   savePreferences,
   startLiveTracking,
+  chooseAndSaveGameDirectory,
 } from "../lib/nativeTracker";
 import { ArtworkProvider } from "../journal/Artwork";
 import { Icon } from "../journal/Icon";
@@ -34,14 +36,14 @@ import {
   type View,
 } from "../journal/types";
 
-const GAME =
-  "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Fields of Mistria";
 type Props = {
   language?: Language;
   nativeRuntime?: () => boolean;
   readinessProbe?: typeof probeReadiness;
   importExisting?: typeof importLatestDesktopBackup;
   reconcileLiveSave?: typeof reconcileActiveLiveSave;
+  resolveGameDirectory?: typeof resolveGameDirectory;
+  chooseGameDirectory?: typeof chooseAndSaveGameDirectory;
   initialJournal?: Journal;
   artLoader?: (keys: string[]) => Promise<Record<string, string | null>>;
 };
@@ -51,6 +53,8 @@ export function DesktopApp({
   readinessProbe = probeReadiness,
   importExisting = importLatestDesktopBackup,
   reconcileLiveSave = reconcileActiveLiveSave,
+  resolveGameDirectory: resolveGameDirectoryForApp = resolveGameDirectory,
+  chooseGameDirectory = chooseAndSaveGameDirectory,
   initialJournal,
   artLoader,
 }: Props) {
@@ -70,11 +74,14 @@ export function DesktopApp({
   const [status, setStatus] = useState("waiting");
   const [error, setError] = useState("");
   const [profileKey, setProfileKey] = useState("");
+  const [gameDirectory, setGameDirectory] = useState<string | null>(null);
   const activeProfileRef = useRef("");
   const noteDrafts = useRef(new Map<string, string>());
   const scrollRef = useRef<HTMLDivElement>(null);
   const sessionStarted = useRef(false);
-  const initializeRef = useRef<() => Promise<void>>(async () => {});
+  const initializeRef = useRef<(selectedGameDirectory?: string) => Promise<void>>(
+    async () => {},
+  );
   const refresh = async () => {
     const [snapshot, profiles] = await Promise.all([
       invoke<Journal | null>("get_journal_snapshot"),
@@ -94,7 +101,7 @@ export function DesktopApp({
     let modDataDirectory = "";
     let retryTicks = 0;
     let reconcileTicks = 0;
-    const start = async () => {
+    const start = async (selectedGameDirectory?: string) => {
       if (initializing || !alive) return;
       initializing = true;
       setBusy(true);
@@ -105,18 +112,26 @@ export function DesktopApp({
         setLanguage(preferences.language);
         setSpoilers(preferences.spoiler_mode === "all");
         setHints(preferences.hints_enabled);
+        const resolvedGameDirectory =
+          selectedGameDirectory ?? (await resolveGameDirectoryForApp());
+        if (!resolvedGameDirectory) {
+          setStatus("waiting");
+          setError("game-directory");
+          return;
+        }
+        setGameDirectory(resolvedGameDirectory);
         const modData = await join(
           await localDataDir(),
           "FieldsOfMistria",
           "mod_data",
         );
-        const report = await readinessProbe(GAME, modData);
+        const report = await readinessProbe(resolvedGameDirectory, modData);
         modDataDirectory = modData;
         if (!alive) return;
         if (report.catalog_approved) {
           let liveImported = false;
           if (report.companion_log_found && !sessionStarted.current) {
-            await startLiveTracking(GAME, modData);
+            await startLiveTracking(resolvedGameDirectory, modData);
             sessionStarted.current = true;
             try {
               liveImported = (await reconcileLiveSave(modData)) !== null;
@@ -124,7 +139,7 @@ export function DesktopApp({
               liveImported = false;
             }
           } else if (!sessionStarted.current)
-            await invoke("prepare_journal", { gameDirectory: GAME });
+            await invoke("prepare_journal", { gameDirectory: resolvedGameDirectory });
           setStatus(report.companion_log_found ? "tracking" : "waiting");
           if (!liveImported) {
             try {
@@ -263,6 +278,20 @@ export function DesktopApp({
     } catch {
       setError("preferences");
     } finally {
+      setBusy(false);
+    }
+  };
+  const chooseGameDirectoryAndRestart = async () => {
+    if (!native) return;
+    setBusy(true);
+    setError("");
+    try {
+      const selectedGameDirectory = await chooseGameDirectory();
+      if (selectedGameDirectory) await initializeRef.current(selectedGameDirectory);
+      else setBusy(false);
+    } catch {
+      setStatus("waiting");
+      setError("game-directory");
       setBusy(false);
     }
   };
@@ -405,8 +434,12 @@ export function DesktopApp({
                   <Icon name="info" size={16} />
                   <span>
                     {language === "fra"
-                      ? "Certaines données n’ont pas pu être actualisées. Vos découvertes enregistrées restent conservées."
-                      : "Some data could not be refreshed. Your saved discoveries are preserved."}
+                      ? error === "game-directory"
+                        ? "Le dossier de Fields of Mistria est introuvable. Ouvrez Réglages pour le choisir."
+                        : "Certaines données n’ont pas pu être actualisées. Vos découvertes enregistrées restent conservées."
+                      : error === "game-directory"
+                        ? "Fields of Mistria could not be found. Open Settings to choose its folder."
+                        : "Some data could not be refreshed. Your saved discoveries are preserved."}
                   </span>
                   <button onClick={() => void initializeRef.current()}>
                     {tr(language, "retry")}
@@ -495,6 +528,29 @@ export function DesktopApp({
                       {tr(language, "import")}
                     </button>
                   </div>
+                  {!gameDirectory && native && (
+                    <div className="settings-card">
+                      <h2>
+                        {language === "fra"
+                          ? "Dossier du jeu"
+                          : "Game folder"}
+                      </h2>
+                      <p>
+                        {language === "fra"
+                          ? "Le suivi cherche normalement le jeu automatiquement."
+                          : "Tracker normally finds the game automatically."}
+                      </p>
+                      <button
+                        className="secondary-button"
+                        disabled={busy}
+                        onClick={() => void chooseGameDirectoryAndRestart()}
+                      >
+                        {language === "fra"
+                          ? "Choisir le dossier de Fields of Mistria"
+                          : "Choose Fields of Mistria folder"}
+                      </button>
+                    </div>
+                  )}
                 </>
               ) : screen ? (
                 view === "overview" ? (

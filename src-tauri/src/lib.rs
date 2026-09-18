@@ -27,6 +27,7 @@ pub fn run() {
         return;
     };
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let tracker_data_dir = app
                 .path()

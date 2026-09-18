@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { open } from '@tauri-apps/plugin-dialog';
 
 export type ProfileSummary = {
   active_profile: string | null;
@@ -9,6 +10,7 @@ export type NativePreferences = {
   language: 'eng' | 'fra';
   spoiler_mode: 'all' | 'free';
   hints_enabled: boolean;
+  game_directory?: string | null;
 };
 
 export type ActiveSnapshot = {
@@ -43,6 +45,20 @@ export function selectProfile(profileId: string): Promise<void> {
 
 export function getPreferences(): Promise<NativePreferences> {
   return invoke<NativePreferences>('get_preferences');
+}
+
+export function resolveGameDirectory(): Promise<string | null> {
+  return invoke<string | null>('resolve_game_directory');
+}
+
+export async function chooseAndSaveGameDirectory(): Promise<string | null> {
+  const selection = await open({
+    directory: true,
+    multiple: false,
+    title: 'Choose Fields of Mistria folder',
+  });
+  if (typeof selection !== 'string') return null;
+  return invoke<string>('save_game_directory', { gameDirectory: selection });
 }
 
 export function getActiveSnapshot(): Promise<ActiveSnapshot | null> {

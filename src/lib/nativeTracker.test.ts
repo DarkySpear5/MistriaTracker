@@ -1,6 +1,15 @@
 import { invoke } from '@tauri-apps/api/core';
 import { describe, expect, it, vi } from 'vitest';
-import { getActiveSnapshot, getPreferences, getProfileSummary, probeReadiness, readItemNote, savePreferences, selectProfile } from './nativeTracker';
+import {
+  getActiveSnapshot,
+  getPreferences,
+  getProfileSummary,
+  probeReadiness,
+  readItemNote,
+  resolveGameDirectory,
+  savePreferences,
+  selectProfile,
+} from './nativeTracker';
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
 
@@ -62,5 +71,12 @@ describe('native tracker bridge', () => {
     const argumentsForCall = vi.mocked(invoke).mock.calls.at(-1)?.[1] as Record<string, unknown>;
     expect(argumentsForCall).toEqual({ gameDirectory: 'C:/game' });
     expect(Object.hasOwn(argumentsForCall, 'modDataDirectory')).toBe(false);
+  });
+
+  it('asks native code for a validated Fields of Mistria folder', async () => {
+    vi.mocked(invoke).mockResolvedValueOnce('D:/Games/Fields of Mistria');
+
+    await expect(resolveGameDirectory()).resolves.toBe('D:/Games/Fields of Mistria');
+    expect(invoke).toHaveBeenCalledWith('resolve_game_directory');
   });
 });

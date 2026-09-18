@@ -3,5 +3,5 @@
   "identifier": "main-capability",
   "description": "Minimal core capability for the tracker shell.",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": ["core:default", "dialog:allow-open"]
 }

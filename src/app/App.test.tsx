@@ -68,6 +68,7 @@ describe("Desktop journal", () => {
       render(
         <App
           nativeRuntime={() => true}
+          resolveGameDirectory={async () => "C:/Test/Fields of Mistria"}
           readinessProbe={async () => ({
             catalog: { game_version: "verified", item_count: 3 },
             catalog_approved: true,
@@ -122,6 +123,7 @@ describe("Desktop journal", () => {
     render(
       <App
         nativeRuntime={() => true}
+        resolveGameDirectory={async () => "C:/Test/Fields of Mistria"}
         readinessProbe={async () => ({
           catalog: { game_version: "verified", item_count: 3 },
           catalog_approved: true,
@@ -150,6 +152,55 @@ describe("Desktop journal", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("uses the game directory resolved by native code instead of a fixed Steam path", async () => {
+    const readinessProbe = vi.fn(async () => ({
+      catalog: { game_version: "unapproved", item_count: 0 },
+      catalog_approved: false,
+      companion_log_found: false,
+    }));
+    vi.mocked(invoke).mockImplementation(async (command) => {
+      if (command === "get_preferences")
+        return { language: "eng", spoiler_mode: "free", hints_enabled: false };
+      throw new Error("Unexpected command " + command);
+    });
+
+    render(
+      <App
+        nativeRuntime={() => true}
+        readinessProbe={readinessProbe}
+        resolveGameDirectory={async () => "D:/Games/Fields of Mistria"}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(readinessProbe).toHaveBeenCalledWith(
+        "D:/Games/Fields of Mistria",
+        "C:/Test/mod_data",
+      ),
+    );
+  });
+
+  it("shows one folder action when automatic discovery cannot find the game", async () => {
+    vi.mocked(invoke).mockImplementation(async (command) => {
+      if (command === "get_preferences")
+        return { language: "eng", spoiler_mode: "free", hints_enabled: false };
+      throw new Error("Unexpected command " + command);
+    });
+
+    render(
+      <App
+        nativeRuntime={() => true}
+        resolveGameDirectory={async () => null}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Settings" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    expect(
+      screen.getByRole("button", { name: "Choose Fields of Mistria folder" }),
+    ).toBeVisible();
   });
   it("uses donation status, not acquisition status, for Museum filters", () => {
     preview();
@@ -262,6 +313,7 @@ describe("Desktop journal", () => {
     render(
       <App
         nativeRuntime={() => true}
+        resolveGameDirectory={async () => "C:/Test/Fields of Mistria"}
         readinessProbe={async () => ({
           catalog: { game_version: "verified", item_count: 3 },
           catalog_approved: true,
@@ -295,6 +347,7 @@ describe("Desktop journal", () => {
     render(
       <App
         nativeRuntime={() => true}
+        resolveGameDirectory={async () => "C:/Test/Fields of Mistria"}
         readinessProbe={async () => ({
           catalog: { game_version: "verified", item_count: 3 },
           catalog_approved: true,
