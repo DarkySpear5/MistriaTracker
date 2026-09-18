@@ -18,6 +18,10 @@ The desktop tracker and the game companion are separate:
    MOMI and the companion installed, it also begins tracking new discoveries
    automatically while you play.
 
+On the testing branch, Tracker finds Fields of Mistria automatically in normal
+Steam libraries. If it cannot, open Settings and choose the game folder that
+contains `assets.zip`. Tracker does not change game files or saves.
+
 MOMI is only needed for live tracking. Without it, Mistria Tracker can still
 show discoveries already found from its local tracker data. The tracker never
 edits a Fields of Mistria save file.
