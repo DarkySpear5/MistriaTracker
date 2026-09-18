@@ -180,4 +180,25 @@ mod tests {
             SaveParserDecision::Unsupported
         );
     }
+
+    #[test]
+    fn embedded_1_0_5_approval_allows_live_events_but_not_unverified_save_imports() {
+        let matrix = CompatibilityMatrix::embedded().unwrap();
+
+        assert_eq!(
+            matrix.decision(&VersionSet::new("1.0.5", "0.1.3", 1)),
+            CompatibilityDecision::FullySupported
+        );
+        assert_eq!(
+            matrix.catalog_parser_decision(
+                "catalog-sha256:18a3827b479958c768c2b18f565c8081460bea3e055b78305e9f7088aa46c304",
+                1,
+            ),
+            SaveParserDecision::Verified
+        );
+        assert_eq!(
+            matrix.save_parser_decision("1.0.5", 1),
+            SaveParserDecision::Unsupported
+        );
+    }
 }

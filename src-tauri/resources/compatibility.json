@@ -15,6 +15,22 @@
       "save_parser_versions": [],
       "catalog_parser_versions": [1],
       "probe_required": false
+    },
+    {
+      "game_version": "1.0.5",
+      "event_schema_versions": [1],
+      "companion_versions": ["0.1.x"],
+      "save_parser_versions": [],
+      "catalog_parser_versions": [],
+      "probe_required": false
+    },
+    {
+      "game_version": "catalog-sha256:18a3827b479958c768c2b18f565c8081460bea3e055b78305e9f7088aa46c304",
+      "event_schema_versions": [],
+      "companion_versions": [],
+      "save_parser_versions": [],
+      "catalog_parser_versions": [1],
+      "probe_required": false
     }
   ]
 }

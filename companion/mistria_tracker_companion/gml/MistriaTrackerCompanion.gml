@@ -67,7 +67,7 @@ function mistria_tracker_companion_emit(_type, _payload) {
     var _event = {
         schema_version: 1,
         companion_version: "0.1.3",
-        game_version: "1.0.4",
+        game_version: "1.0.5",
         profile_id: _profile_id,
         session_id: global.mistria_tracker_companion_runtime.session_id,
         sequence: global.mistria_tracker_companion_runtime.sequence,
