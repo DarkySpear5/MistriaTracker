@@ -11,6 +11,7 @@ pub mod profiles;
 pub mod safety;
 pub mod save;
 pub mod spoilers;
+pub mod steam_discovery;
 pub mod tracking;
 
 use std::error::Error;
