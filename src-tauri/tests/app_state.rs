@@ -3,6 +3,7 @@ use mistria_tracker_lib::{
     compatibility::CompatibilityMatrix,
     domain::{Language, ProfileId, SpoilerMode},
     persistence::AcceptResult,
+    steam_discovery::DiscoverySources,
     tracking::ReadOnlyLogTail,
 };
 use std::fs;
@@ -53,6 +54,7 @@ fn tracker_preferences_default_to_spoiler_free_and_normalize_hints() {
             language: Language::Fra,
             spoiler_mode: SpoilerMode::All,
             hints_enabled: true,
+            game_directory: None,
         })
         .unwrap();
 
@@ -62,7 +64,26 @@ fn tracker_preferences_default_to_spoiler_free_and_normalize_hints() {
             language: Language::Fra,
             spoiler_mode: SpoilerMode::All,
             hints_enabled: false,
+            game_directory: None,
         }
+    );
+}
+
+#[test]
+fn stale_saved_game_directory_falls_through_to_discovery() {
+    let directory = tempdir().unwrap();
+    let state = TrackerState::open(directory.path()).unwrap();
+    let game = directory.path().join("Fields of Mistria");
+    fs::create_dir(&game).unwrap();
+    fs::write(game.join("assets.zip"), b"fixture assets").unwrap();
+    state.save_game_directory(&game).unwrap();
+    fs::remove_dir_all(&game).unwrap();
+
+    assert_eq!(
+        state
+            .resolved_game_directory_from_sources(DiscoverySources::default())
+            .unwrap(),
+        None
     );
 }
 

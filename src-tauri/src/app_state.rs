@@ -5,12 +5,19 @@ use crate::{
     persistence::{AcceptResult, Database, ImportResult, RepoError, Repository},
     safety::paths::GameAssetsPath,
     spoilers::{AppSnapshot, SpoilerPolicy},
+    steam_discovery::{
+        discover_game_directory, discover_windows_game_directory, validate_game_directory,
+        DiscoveryResult, DiscoverySources,
+    },
     tracking::{
         log_lines::event_json_from_log_line, LogTailError, ProfileProgress, ReadOnlyLogTail,
     },
 };
 use serde::{Deserialize, Serialize};
-use std::{path::Path, sync::Mutex};
+use std::{
+    path::{Path, PathBuf},
+    sync::Mutex,
+};
 
 #[derive(Debug, thiserror::Error)]
 pub enum TrackerStateError {
@@ -38,6 +45,8 @@ pub enum TrackerStateError {
     LogTail(#[from] LogTailError),
     #[error("no .sav backup was found in a Mistria Save Backups folder")]
     NoDesktopBackup,
+    #[error("the selected Fields of Mistria folder must contain a readable assets.zip file")]
+    InvalidGameDirectory,
 }
 
 pub struct TrackerState {
@@ -54,6 +63,8 @@ pub struct TrackerPreferences {
     pub language: Language,
     pub spoiler_mode: SpoilerMode,
     pub hints_enabled: bool,
+    #[serde(default)]
+    pub game_directory: Option<PathBuf>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -69,6 +80,7 @@ impl Default for TrackerPreferences {
             language: Language::Eng,
             spoiler_mode: SpoilerMode::Free,
             hints_enabled: false,
+            game_directory: None,
         }
     }
 }
@@ -130,23 +142,66 @@ impl TrackerState {
             .lock()
             .map_err(|_| TrackerStateError::Unavailable)?
             .setting(PREFERENCES_KEY)?;
-        Ok(raw
+        let mut preferences = raw
             .and_then(|value| serde_json::from_str::<TrackerPreferences>(&value).ok())
             .unwrap_or_default()
-            .normalized())
+            .normalized();
+        preferences.game_directory = preferences
+            .game_directory
+            .as_deref()
+            .and_then(validate_game_directory);
+        Ok(preferences)
     }
 
     pub fn save_preferences(
         &self,
-        preferences: TrackerPreferences,
+        mut preferences: TrackerPreferences,
     ) -> Result<(), TrackerStateError> {
-        let serialized =
-            serde_json::to_string(&preferences.clone().normalized()).map_err(RepoError::from)?;
+        let current = self.preferences()?;
+        preferences.game_directory = match preferences.game_directory {
+            Some(candidate) => Some(
+                validate_game_directory(&candidate).ok_or(TrackerStateError::InvalidGameDirectory)?,
+            ),
+            None => current.game_directory,
+        };
+        let serialized = serde_json::to_string(&preferences.normalized()).map_err(RepoError::from)?;
         self.repository
             .lock()
             .map_err(|_| TrackerStateError::Unavailable)?
             .save_setting(PREFERENCES_KEY, &serialized)?;
         Ok(())
+    }
+
+    /// Stores a game location only after opening its direct `assets.zip`.
+    pub fn save_game_directory(&self, candidate: &Path) -> Result<PathBuf, TrackerStateError> {
+        let game_directory =
+            validate_game_directory(candidate).ok_or(TrackerStateError::InvalidGameDirectory)?;
+        let mut preferences = self.preferences()?;
+        preferences.game_directory = Some(game_directory.clone());
+        self.save_preferences(preferences)?;
+        Ok(game_directory)
+    }
+
+    /// Resolves a previously validated choice first, then safe Steam discovery.
+    pub fn resolved_game_directory(&self) -> Result<Option<PathBuf>, TrackerStateError> {
+        let saved_game = self.preferences()?.game_directory;
+        Ok(match discover_windows_game_directory(saved_game) {
+            DiscoveryResult::Found(path) => Some(path),
+            DiscoveryResult::NotFound => None,
+        })
+    }
+
+    /// Testable variant of `resolved_game_directory`; production callers use the
+    /// Windows-system resolver above.
+    pub fn resolved_game_directory_from_sources(
+        &self,
+        mut sources: DiscoverySources,
+    ) -> Result<Option<PathBuf>, TrackerStateError> {
+        sources.saved_game = self.preferences()?.game_directory;
+        Ok(match discover_game_directory(&sources) {
+            DiscoveryResult::Found(path) => Some(path),
+            DiscoveryResult::NotFound => None,
+        })
     }
 
     pub fn ingest_companion_event(

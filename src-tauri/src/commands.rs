@@ -33,6 +33,23 @@ pub fn preferences_value(state: &TrackerState) -> Result<Value, TrackerStateErro
         .map_err(|error| TrackerStateError::Repository(error.into()))
 }
 
+pub fn resolve_game_directory_value(
+    state: &TrackerState,
+) -> Result<Option<String>, TrackerStateError> {
+    state.resolved_game_directory().map(|path| {
+        path.map(|path| path.to_string_lossy().into_owned())
+    })
+}
+
+pub fn save_game_directory_value(
+    state: &TrackerState,
+    game_directory: &str,
+) -> Result<String, TrackerStateError> {
+    state
+        .save_game_directory(std::path::Path::new(game_directory))
+        .map(|path| path.to_string_lossy().into_owned())
+}
+
 pub fn active_snapshot_value(state: &TrackerState) -> Result<Value, TrackerStateError> {
     match state.active_profile_snapshot()? {
         Some(snapshot) => serde_json::to_value(snapshot)
@@ -470,6 +487,19 @@ pub fn select_profile(state: State<'_, TrackerState>, profile_id: String) -> Res
 #[tauri::command]
 pub fn get_preferences(state: State<'_, TrackerState>) -> Result<Value, String> {
     preferences_value(&state).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn resolve_game_directory(state: State<'_, TrackerState>) -> Result<Option<String>, String> {
+    resolve_game_directory_value(&state).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn save_game_directory(
+    state: State<'_, TrackerState>,
+    game_directory: String,
+) -> Result<String, String> {
+    save_game_directory_value(&state, &game_directory).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
