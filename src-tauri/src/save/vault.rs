@@ -8,6 +8,8 @@ use std::{
 const MAX_SECTIONS: u64 = 256;
 const MAX_NAME_BYTES: u64 = 256;
 const MAX_PAYLOAD_BYTES: u64 = 64 * 1024 * 1024;
+pub const MAX_COMPRESSED_BYTES: usize = 16 * 1024 * 1024;
+const MAX_DECODED_BYTES: usize = 16 * 1024 * 1024;
 
 #[derive(Debug)]
 pub struct Vault {
@@ -43,14 +45,16 @@ pub struct VaultReader;
 impl VaultReader {
     pub fn read<R: Read>(mut input: R) -> Result<Vault, VaultError> {
         let mut compressed = Vec::new();
-        input.read_to_end(&mut compressed)?;
-        let bytes = decode_zlib(&compressed, max_decoded_size())?;
+        input
+            .by_ref()
+            .take((MAX_COMPRESSED_BYTES + 1) as u64)
+            .read_to_end(&mut compressed)?;
+        if compressed.len() > MAX_COMPRESSED_BYTES {
+            return Err(VaultError::LimitExceeded("compressed vault size"));
+        }
+        let bytes = decode_zlib(&compressed, MAX_DECODED_BYTES)?;
         parse_sections(&bytes)
     }
-}
-
-fn max_decoded_size() -> usize {
-    usize::try_from(MAX_SECTIONS * (16 + MAX_NAME_BYTES + MAX_PAYLOAD_BYTES)).unwrap()
 }
 
 fn decode_zlib(compressed: &[u8], maximum_size: usize) -> Result<Vec<u8>, VaultError> {
@@ -134,6 +138,7 @@ fn read_bytes<'a>(
 mod tests {
     use super::*;
     use crate::test_support::vault::{compress, sections, vault_bytes};
+    use std::io::Read;
 
     #[test]
     fn reads_named_sections_and_rejects_duplicate_names() {
@@ -233,6 +238,23 @@ mod tests {
         assert!(matches!(
             decode_zlib(&compress(&[0; 1024]), 32),
             Err(VaultError::LimitExceeded(_))
+        ));
+    }
+
+    #[test]
+    fn rejects_compressed_input_larger_than_the_safe_limit() {
+        assert!(matches!(
+            VaultReader::read(std::io::repeat(0).take(16 * 1024 * 1024 + 1)),
+            Err(VaultError::LimitExceeded("compressed vault size"))
+        ));
+    }
+
+    #[test]
+    fn rejects_decoded_vault_larger_than_the_safe_limit() {
+        let oversized = vec![0; 16 * 1024 * 1024 + 1];
+        assert!(matches!(
+            VaultReader::read(compress(&oversized).as_slice()),
+            Err(VaultError::LimitExceeded("decoded vault size"))
         ));
     }
 }

@@ -24,6 +24,8 @@ pub enum BackupError {
     InvalidBackup,
     #[error("backup filename does not contain a numeric Fields of Mistria profile id")]
     MissingProfileId,
+    #[error("backup exceeds the Tracker safety limit")]
+    InputTooLarge,
     #[error("could not read the backup: {0}")]
     Read(#[from] std::io::Error),
     #[error(transparent)]
@@ -39,10 +41,14 @@ pub fn existing_discoveries(
     backup: &Path,
     compatibility: &CompatibilityMatrix,
 ) -> Result<ExistingDiscoveries, BackupError> {
+    let metadata = fs::metadata(backup)?;
     if backup.extension().and_then(|extension| extension.to_str()) != Some("sav")
-        || !fs::metadata(backup)?.is_file()
+        || !metadata.is_file()
     {
         return Err(BackupError::InvalidBackup);
+    }
+    if metadata.len() > crate::save::vault::MAX_COMPRESSED_BYTES as u64 {
+        return Err(BackupError::InputTooLarge);
     }
     let bytes = fs::read(backup)?;
     discoveries_from_bytes(
@@ -151,6 +157,20 @@ mod tests {
             existing_discoveries(&backup, &CompatibilityMatrix::embedded().unwrap()),
             Err(BackupError::MissingProfileId)
         ));
+    }
+
+    #[test]
+    fn rejects_an_oversized_backup_before_parsing_it() {
+        let directory = tempdir().unwrap();
+        let backup = directory.path().join("Ari-game-1849811906-1.sav");
+        fs::write(&backup, vec![0; 16 * 1024 * 1024 + 1]).unwrap();
+
+        assert_eq!(
+            existing_discoveries(&backup, &CompatibilityMatrix::embedded().unwrap())
+                .unwrap_err()
+                .to_string(),
+            "backup exceeds the Tracker safety limit"
+        );
     }
 
     #[test]

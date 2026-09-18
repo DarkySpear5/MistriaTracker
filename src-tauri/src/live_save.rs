@@ -3,7 +3,12 @@ use crate::{
     safety::paths::{GameSavePath, GameSavePathError},
     tracking::log_lines::event_json_from_log_line,
 };
-use std::{fs, path::Path, process::Command};
+use std::{
+    fs::{self, File},
+    io::{Read, Seek, SeekFrom},
+    path::Path,
+    process::Command,
+};
 
 const LOG_TAIL_LIMIT: usize = 256 * 1024;
 
@@ -45,9 +50,8 @@ pub fn newest_save_for_profile(
 /// exact profile activation. Item events are deliberately not replayed here;
 /// the live tail owns those instant updates.
 pub fn active_profile_from_log(log: &Path) -> Result<Option<ProfileId>, LiveSaveError> {
-    let bytes = fs::read(log)?;
-    let start = bytes.len().saturating_sub(LOG_TAIL_LIMIT);
-    let tail = String::from_utf8_lossy(&bytes[start..]);
+    let bytes = read_log_tail(log)?;
+    let tail = String::from_utf8_lossy(&bytes);
     for line in tail.lines().rev() {
         let Some(json) = event_json_from_log_line(line) else {
             continue;
@@ -60,6 +64,16 @@ pub fn active_profile_from_log(log: &Path) -> Result<Option<ProfileId>, LiveSave
         }
     }
     Ok(None)
+}
+
+fn read_log_tail(log: &Path) -> Result<Vec<u8>, LiveSaveError> {
+    let mut file = File::open(log)?;
+    let length = file.metadata()?.len();
+    let length = length.min(LOG_TAIL_LIMIT as u64);
+    file.seek(SeekFrom::End(-(length as i64)))?;
+    let mut bytes = vec![0; length as usize];
+    file.read_exact(&mut bytes)?;
+    Ok(bytes)
 }
 
 /// Process detection is merely a safety signal. Save selection still requires
@@ -89,7 +103,10 @@ fn game_process_is_running(tasklist: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{active_profile_from_log, game_process_is_running, newest_save_for_profile};
+    use super::{
+        active_profile_from_log, game_process_is_running, newest_save_for_profile, read_log_tail,
+        LOG_TAIL_LIMIT,
+    };
     use crate::domain::ProfileId;
     use std::fs;
     use tempfile::tempdir;
@@ -129,6 +146,22 @@ mod tests {
             active_profile_from_log(&log).unwrap().unwrap().as_str(),
             "331655283"
         );
+    }
+
+    #[test]
+    fn reads_only_the_bounded_end_of_a_large_companion_log() {
+        let directory = tempdir().unwrap();
+        let log = directory.path().join("mistria_tracker_companion.log");
+        let activation = "MISTRIA_TRACKER_EVENT| {\"schema_version\":1,\"companion_version\":\"0.1.0\",\"game_version\":\"1.0.4\",\"profile_id\":\"331655283\",\"session_id\":\"00000000-0000-0000-0000-000000000000\",\"sequence\":1,\"type\":\"profile_activated\"}\n";
+        let mut contents = vec![b'x'; LOG_TAIL_LIMIT];
+        contents.extend_from_slice(b"\n");
+        contents.extend_from_slice(activation.as_bytes());
+        fs::write(&log, contents).unwrap();
+
+        let tail = read_log_tail(&log).unwrap();
+
+        assert!(tail.len() <= LOG_TAIL_LIMIT);
+        assert!(String::from_utf8_lossy(&tail).contains(activation.trim()));
     }
 
     #[test]

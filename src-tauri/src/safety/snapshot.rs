@@ -1,4 +1,5 @@
 use super::paths::GameSavePath;
+use crate::save::vault::MAX_COMPRESSED_BYTES;
 use sha2::{Digest, Sha256};
 use std::{
     fs::{self, File, OpenOptions},
@@ -25,6 +26,8 @@ pub enum SnapshotError {
     BackupStorage(#[source] std::io::Error),
     #[error("the game save changed while the tracker was reading it")]
     SourceChanged,
+    #[error("the game save exceeds the Tracker safety limit")]
+    SourceTooLarge,
     #[error("could not write a tracker-owned snapshot: {0}")]
     SnapshotWrite(#[source] std::io::Error),
 }
@@ -65,6 +68,9 @@ impl SnapshotService {
 
     pub fn snapshot(&self, source: &GameSavePath) -> Result<Snapshot, SnapshotError> {
         let before = source_fingerprint(source.as_path())?;
+        if before.length > MAX_COMPRESSED_BYTES as u64 {
+            return Err(SnapshotError::SourceTooLarge);
+        }
         if !self.stability_window.is_zero() {
             thread::sleep(self.stability_window);
         }
@@ -135,7 +141,9 @@ fn copy_to_snapshot(input: &mut File, output: &mut File) -> Result<(), SnapshotE
 mod tests {
     use super::*;
     use crate::{
-        safety::paths::GameSavePath, save::vault::VaultReader, test_support::vault::Fixture,
+        safety::paths::GameSavePath,
+        save::vault::{VaultReader, MAX_COMPRESSED_BYTES},
+        test_support::vault::Fixture,
     };
     use sha2::{Digest, Sha256};
     use std::{
@@ -237,6 +245,17 @@ mod tests {
             .backups
             .ends_with("MistriaTracker/backups/game-saves"));
         assert!(service.backups.exists());
+    }
+
+    #[test]
+    fn refuses_an_oversized_live_save_without_creating_a_snapshot() {
+        let fixture = Fixture::new();
+        fs::write(&fixture.source, vec![0; MAX_COMPRESSED_BYTES + 1]).unwrap();
+        let source = GameSavePath::new(&fixture.saves, &fixture.source).unwrap();
+        let service = SnapshotService::for_fixture(&fixture.local, Duration::ZERO).unwrap();
+
+        assert!(service.snapshot(&source).is_err());
+        assert_eq!(fs::read_dir(&service.backups).unwrap().count(), 0);
     }
 
     #[test]
