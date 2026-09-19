@@ -7,7 +7,7 @@ use serde::Serialize;
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
 
-const SAVE_PARSER_VERSION: u16 = 1;
+pub(crate) const SAVE_PARSER_VERSION: u16 = 1;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct ImportedEvidence {

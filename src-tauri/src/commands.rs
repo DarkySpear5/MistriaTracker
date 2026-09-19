@@ -1,14 +1,17 @@
 use crate::{
     app_state::{TrackerPreferences, TrackerState, TrackerStateError},
     catalog::{cached_item_icon, CatalogCacheDir},
-    compatibility::CompatibilityMatrix,
+    compatibility::{CompatibilityMatrix, SaveParserDecision},
     domain::ProfileId,
-    live_save::{active_profile_from_log, game_is_running, newest_save_for_profile},
+    live_save::{
+        active_profile_from_log, game_is_running, newest_save_for_profile, ActiveCompanionProfile,
+    },
     persistence::ImportResult,
     safety::paths::CompanionLogPath,
     safety::paths::GameAssetsPath,
     safety::snapshot::SnapshotService,
     save::backup::{discoveries_from_bytes, existing_discoveries},
+    save::evidence::SAVE_PARSER_VERSION,
     tracking::PassiveTrackingSession,
 };
 use base64::{engine::general_purpose::STANDARD, Engine};
@@ -317,6 +320,37 @@ fn import_live_save_for_profile_value(
     })))
 }
 
+/// Selects the companion-confirmed profile independently of whether the
+/// current game version permits save-data import.
+fn select_confirmed_live_profile(
+    state: &TrackerState,
+    profile_id: &ProfileId,
+) -> Result<(), TrackerStateError> {
+    state.activate_profile(profile_id.as_str())
+}
+
+fn reconcile_confirmed_live_profile_value<F>(
+    state: &TrackerState,
+    active_profile: &ActiveCompanionProfile,
+    compatibility: &CompatibilityMatrix,
+    import_save: F,
+) -> Result<Option<Value>, TrackerStateError>
+where
+    F: FnOnce() -> Result<Option<Value>, TrackerStateError>,
+{
+    select_confirmed_live_profile(state, &active_profile.profile_id)?;
+    if compatibility.save_parser_decision(&active_profile.game_version, SAVE_PARSER_VERSION)
+        != SaveParserDecision::Verified
+    {
+        return Ok(Some(json!({
+            "profile_id": active_profile.profile_id.as_str(),
+            "discovered_items": 0,
+            "imported": false,
+        })));
+    }
+    import_save()
+}
+
 pub fn reconcile_active_live_save_value(
     state: &TrackerState,
     mod_data_directory: &str,
@@ -336,7 +370,7 @@ pub fn reconcile_active_live_save_value(
         &mod_data_directory,
         &mod_data_directory.join("mistria_tracker_companion/logs/mistria_tracker_companion.log"),
     )?;
-    let Some(profile_id) = active_profile_from_log(log.as_path()).map_err(|error| {
+    let Some(active_profile) = active_profile_from_log(log.as_path()).map_err(|error| {
         TrackerStateError::Repository(crate::persistence::RepoError::Io(std::io::Error::other(
             error.to_string(),
         )))
@@ -346,13 +380,15 @@ pub fn reconcile_active_live_save_value(
     };
     let compatibility =
         CompatibilityMatrix::embedded().map_err(crate::persistence::RepoError::from)?;
-    import_live_save_for_profile_value(
-        state,
-        &local.join("FieldsOfMistria/saves"),
-        &local,
-        &profile_id,
-        &compatibility,
-    )
+    reconcile_confirmed_live_profile_value(state, &active_profile, &compatibility, || {
+        import_live_save_for_profile_value(
+            state,
+            &local.join("FieldsOfMistria/saves"),
+            &local,
+            &active_profile.profile_id,
+            &compatibility,
+        )
+    })
 }
 
 fn latest_backup(backup_directories: &[PathBuf]) -> Result<PathBuf, TrackerStateError> {
@@ -474,6 +510,44 @@ mod tests {
         );
         let snapshots = fixture.local.join("MistriaTracker/backups/game-saves");
         assert_eq!(fs::read_dir(snapshots).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn selects_the_companion_confirmed_profile_before_live_save_import() {
+        let state = TrackerState::from_repository(Repository::in_memory().unwrap());
+        let profile = ProfileId::new("331655283").unwrap();
+
+        select_confirmed_live_profile(&state, &profile).unwrap();
+
+        assert_eq!(
+            state.active_profile().unwrap().unwrap().as_str(),
+            "331655283"
+        );
+    }
+
+    #[test]
+    fn keeps_the_confirmed_profile_when_its_save_parser_is_unapproved() {
+        let state = TrackerState::from_repository(Repository::in_memory().unwrap());
+        let active_profile = crate::live_save::ActiveCompanionProfile {
+            profile_id: ProfileId::new("331655283").unwrap(),
+            game_version: "1.0.5".to_owned(),
+        };
+
+        let report = reconcile_confirmed_live_profile_value(
+            &state,
+            &active_profile,
+            &CompatibilityMatrix::embedded().unwrap(),
+            || panic!("an unapproved save parser must not run"),
+        )
+        .unwrap()
+        .unwrap();
+
+        assert_eq!(report["profile_id"], "331655283");
+        assert_eq!(report["imported"], false);
+        assert_eq!(
+            state.active_profile().unwrap().unwrap().as_str(),
+            "331655283"
+        );
     }
 }
 

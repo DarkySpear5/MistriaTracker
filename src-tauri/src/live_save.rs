@@ -12,6 +12,12 @@ use std::{
 
 const LOG_TAIL_LIMIT: usize = 256 * 1024;
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ActiveCompanionProfile {
+    pub profile_id: ProfileId,
+    pub game_version: String,
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum LiveSaveError {
     #[error("could not inspect Fields of Mistria saves: {0}")]
@@ -49,7 +55,9 @@ pub fn newest_save_for_profile(
 /// Reads at most the end of the companion's isolated log and returns the last
 /// exact profile activation. Item events are deliberately not replayed here;
 /// the live tail owns those instant updates.
-pub fn active_profile_from_log(log: &Path) -> Result<Option<ProfileId>, LiveSaveError> {
+pub fn active_profile_from_log(
+    log: &Path,
+) -> Result<Option<ActiveCompanionProfile>, LiveSaveError> {
     let bytes = read_log_tail(log)?;
     let tail = String::from_utf8_lossy(&bytes);
     for line in tail.lines().rev() {
@@ -60,7 +68,10 @@ pub fn active_profile_from_log(log: &Path) -> Result<Option<ProfileId>, LiveSave
             continue;
         };
         if matches!(event.event, CompanionEvent::ProfileActivated) {
-            return Ok(Some(event.profile_id));
+            return Ok(Some(ActiveCompanionProfile {
+                profile_id: event.profile_id,
+                game_version: event.game_version,
+            }));
         }
     }
     Ok(None)
@@ -143,8 +154,28 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            active_profile_from_log(&log).unwrap().unwrap().as_str(),
+            active_profile_from_log(&log)
+                .unwrap()
+                .unwrap()
+                .profile_id
+                .as_str(),
             "331655283"
+        );
+    }
+
+    #[test]
+    fn keeps_the_confirmed_profile_game_version_for_import_gating() {
+        let directory = tempdir().unwrap();
+        let log = directory.path().join("mistria_tracker_companion.log");
+        fs::write(
+            &log,
+            "MISTRIA_TRACKER_EVENT| {\"schema_version\":1,\"companion_version\":\"0.1.3\",\"game_version\":\"1.0.5\",\"profile_id\":\"331655283\",\"session_id\":\"00000000-0000-0000-0000-000000000000\",\"sequence\":1,\"type\":\"profile_activated\"}\n",
+        )
+        .unwrap();
+
+        assert_eq!(
+            active_profile_from_log(&log).unwrap().unwrap().game_version,
+            "1.0.5"
         );
     }
 
