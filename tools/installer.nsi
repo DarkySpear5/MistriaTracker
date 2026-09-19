@@ -14,14 +14,6 @@ ShowUnInstDetails show
 
 Var GameDirectory
 
-Function .onInit
-  Call FindGameDirectory
-  SectionSetFlags ${SecDesktopShortcut} ${SF_SELECTED}
-  StrCmp $GameDirectory "" game_not_found
-  SectionSetFlags ${SecCompanion} ${SF_SELECTED}
-  game_not_found:
-FunctionEnd
-
 ; Check only known Steam locations. This never scans folders recursively and a
 ; candidate is accepted only if it contains Fields of Mistria's assets.zip.
 Function FindGameDirectory
@@ -101,6 +93,14 @@ Section /o "Live tracking companion (AIM/MOMI, recommended)" SecCompanion
 
   companion_skipped:
 SectionEnd
+
+Function .onInit
+  Call FindGameDirectory
+  SectionSetFlags ${SecDesktopShortcut} ${SF_SELECTED}
+  StrCmp $GameDirectory "" game_not_found
+  SectionSetFlags ${SecCompanion} ${SF_SELECTED}
+  game_not_found:
+FunctionEnd
 
 Section "Uninstall"
   Delete "$DESKTOP\\Mistria Tracker.lnk"
