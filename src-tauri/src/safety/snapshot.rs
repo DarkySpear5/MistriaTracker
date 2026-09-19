@@ -2,7 +2,7 @@ use super::paths::GameSavePath;
 use crate::save::vault::MAX_COMPRESSED_BYTES;
 use sha2::{Digest, Sha256};
 use std::{
-    fs::{self, File, OpenOptions},
+    fs::{self, OpenOptions},
     io::{Read, Write},
     path::{Path, PathBuf},
     thread,
@@ -123,16 +123,29 @@ fn source_fingerprint(path: &Path) -> Result<SourceFingerprint, SnapshotError> {
     })
 }
 
-fn copy_to_snapshot(input: &mut File, output: &mut File) -> Result<(), SnapshotError> {
+fn copy_to_snapshot<R: Read, W: Write>(input: &mut R, output: &mut W) -> Result<(), SnapshotError> {
     let mut buffer = [0_u8; 64 * 1024];
+    let mut copied = 0usize;
     loop {
-        let count = input.read(&mut buffer).map_err(SnapshotError::Read)?;
+        if copied == MAX_COMPRESSED_BYTES {
+            let mut excess = [0_u8; 1];
+            if input.read(&mut excess).map_err(SnapshotError::Read)? != 0 {
+                return Err(SnapshotError::SourceTooLarge);
+            }
+            break;
+        }
+        let remaining = MAX_COMPRESSED_BYTES - copied;
+        let maximum_read = remaining.min(buffer.len());
+        let count = input
+            .read(&mut buffer[..maximum_read])
+            .map_err(SnapshotError::Read)?;
         if count == 0 {
             break;
         }
         output
             .write_all(&buffer[..count])
             .map_err(SnapshotError::SnapshotWrite)?;
+        copied += count;
     }
     output.flush().map_err(SnapshotError::SnapshotWrite)
 }
@@ -147,7 +160,7 @@ mod tests {
     };
     use sha2::{Digest, Sha256};
     use std::{
-        fs,
+        fs::{self, File},
         sync::{
             atomic::{AtomicBool, Ordering},
             Arc,
@@ -256,6 +269,21 @@ mod tests {
 
         assert!(service.snapshot(&source).is_err());
         assert_eq!(fs::read_dir(&service.backups).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn copy_operation_stops_before_writing_more_than_the_save_limit() {
+        let directory = tempfile::tempdir().unwrap();
+        let source_path = directory.path().join("growing.sav");
+        fs::write(&source_path, vec![0; MAX_COMPRESSED_BYTES + 1]).unwrap();
+        let mut source = File::open(source_path).unwrap();
+        let mut snapshot = Vec::new();
+
+        assert!(matches!(
+            copy_to_snapshot(&mut source, &mut snapshot),
+            Err(SnapshotError::SourceTooLarge)
+        ));
+        assert!(snapshot.len() <= MAX_COMPRESSED_BYTES);
     }
 
     #[test]

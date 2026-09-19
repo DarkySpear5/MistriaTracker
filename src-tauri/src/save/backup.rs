@@ -7,7 +7,7 @@ use crate::{
     },
 };
 use sha2::{Digest, Sha256};
-use std::{fs, path::Path};
+use std::{fs, io::Read, path::Path};
 
 #[derive(Clone, Debug)]
 pub struct ExistingDiscoveries {
@@ -50,12 +50,35 @@ pub fn existing_discoveries(
     if metadata.len() > crate::save::vault::MAX_COMPRESSED_BYTES as u64 {
         return Err(BackupError::InputTooLarge);
     }
-    let bytes = fs::read(backup)?;
+    let bytes = read_backup_bytes(fs::File::open(backup)?)?;
     discoveries_from_bytes(
         &bytes,
         profile_id_from_backup_filename(backup)?,
         compatibility,
     )
+}
+
+fn read_backup_bytes<R: Read>(mut input: R) -> Result<Vec<u8>, BackupError> {
+    let limit = crate::save::vault::MAX_COMPRESSED_BYTES;
+    let mut bytes = Vec::with_capacity(limit);
+    let mut buffer = [0_u8; 64 * 1024];
+
+    while bytes.len() < limit {
+        let remaining = limit - bytes.len();
+        let maximum_read = remaining.min(buffer.len());
+        let count = input.read(&mut buffer[..maximum_read])?;
+        if count == 0 {
+            return Ok(bytes);
+        }
+        bytes.extend_from_slice(&buffer[..count]);
+    }
+
+    let mut excess = [0_u8; 1];
+    if input.read(&mut excess)? == 0 {
+        Ok(bytes)
+    } else {
+        Err(BackupError::InputTooLarge)
+    }
 }
 
 /// Extracts approved discoveries from bytes which have already been copied into
@@ -171,6 +194,14 @@ mod tests {
                 .to_string(),
             "backup exceeds the Tracker safety limit"
         );
+    }
+
+    #[test]
+    fn bounded_backup_read_rejects_growth_past_the_input_limit() {
+        assert!(matches!(
+            read_backup_bytes(std::io::repeat(0)),
+            Err(BackupError::InputTooLarge)
+        ));
     }
 
     #[test]
