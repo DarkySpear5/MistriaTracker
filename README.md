@@ -8,19 +8,23 @@ to write an isolated event log. It never edits a Fields of Mistria save file.
 
 The desktop tracker and the game companion are separate:
 
-1. To track new discoveries while playing, install MOMI/Mods of Mistria
-   **0.14.1 or newer** first.
-2. Run `MistriaTracker-0.1.3-setup.exe` and install it normally.
-3. On the installer's Components page, tick **Live tracking companion (MOMI,
-   recommended)**. When asked, choose the Fields of Mistria `mods` folder.
-4. Start Fields of Mistria through MOMI, then open Mistria Tracker.
+1. To track new discoveries while playing, install AIM or MOMI/Mods of Mistria
+   with compatible MMAPI hooks first.
+2. Run `MistriaTracker-0.1.4-setup.exe` and install it normally. Tick
+   **Add a desktop shortcut** if you want one.
+3. Leave **Live tracking companion (AIM/MOMI, recommended)** selected to
+   install live tracking. Setup finds normal Steam installs automatically. On
+   an unusual Steam location, choose the *Fields of Mistria game folder* (the
+   folder containing `assets.zip`), not its `mods` folder.
+4. Start Fields of Mistria through AIM or MOMI, then open Mistria Tracker.
 5. The tracker automatically loads existing discoveries when it opens. With
-   MOMI and the companion installed, it also begins tracking new discoveries
-   automatically while you play.
+   AIM/MOMI and the companion installed, it also begins tracking new
+   discoveries automatically while you play. After loading a save for the
+   first time, change rooms once to start the companion log.
 
-On the testing branch, Tracker finds Fields of Mistria automatically in normal
-Steam libraries. If it cannot, open Settings and choose the game folder that
-contains `assets.zip`. Tracker does not change game files or saves.
+Tracker finds Fields of Mistria automatically in normal Steam libraries. If it
+cannot, open Settings and choose the game folder that contains `assets.zip`.
+Tracker does not change game files or saves.
 
 MOMI is only needed for live tracking. Without it, Mistria Tracker can still
 show discoveries already found from its local tracker data. The tracker never
@@ -132,6 +136,6 @@ in this repository.
 
 Maintainers can build a portable ZIP and its checksum with
 `pnpm package:portable`. It is a developer distribution option and is not part
-of the official 0.1.3 release.
+of the official 0.1.4 release.
 
 End-user setup is documented in [`docs/MOMI_INSTALL_GUIDE.md`](docs/MOMI_INSTALL_GUIDE.md).

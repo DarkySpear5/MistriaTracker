@@ -1,11 +1,12 @@
-# Mistria Tracker — MOMI installation guide
+# Mistria Tracker — AIM and MOMI installation guide
 
 ## What is required
 
 - Windows 10 or Windows 11 (64-bit)
 - Fields of Mistria installed and updated
 - The Mistria Tracker desktop app installer
-- MOMI/Mods of Mistria 0.14.1 or newer, only for live tracking while playing
+- AIM or MOMI/Mods of Mistria with compatible MMAPI hooks, only for live
+  tracking while playing
 
 The desktop app and the companion are separate. The companion is only needed
 to report discoveries while the game is running. It does not edit saves or
@@ -13,20 +14,26 @@ replace game values.
 
 ## Install the desktop app
 
-1. Run `MistriaTracker-0.1.3-setup.exe` and install it normally.
-2. To use live tracking, tick **Live tracking companion (MOMI, recommended)**
-   on the Components page. Select the game's `mods` folder when prompted.
+1. Run `MistriaTracker-0.1.4-setup.exe` and install it normally. The
+   **Add a desktop shortcut** choice is selected by default; untick it if you
+   do not want one.
+2. To use live tracking, leave **Live tracking companion (AIM/MOMI,
+   recommended)** selected. Setup finds normal Steam installs automatically.
+   If it cannot, select the *game folder containing `assets.zip`*—not the
+   `mods` folder.
 3. Launch **Mistria Tracker**. It automatically loads existing discoveries
    when it opens.
 4. Keep only one tracker window open. A second launch focuses the existing
    window.
 
-## Install the companion with MOMI
+## Install the companion with AIM or MOMI
 
 1. If you skipped the companion during installation, run the installer again
-   and tick **Live tracking companion (MOMI, recommended)**.
-2. Select the Fields of Mistria `mods` folder when prompted.
-3. Start Fields of Mistria through MOMI.
+   and select **Live tracking companion (AIM/MOMI, recommended)**.
+2. Setup installs the companion under the verified game folder's `mods`
+   directory. If automatic detection cannot find the game, choose the game
+   folder containing `assets.zip`.
+3. Start Fields of Mistria through AIM or MOMI.
 
 ## First-run checklist
 
@@ -36,6 +43,8 @@ replace game values.
 3. When the companion is detected, new discoveries appear in the tracker while
    you play. The tracker reads the companion's isolated log and never writes to
    a Fields of Mistria save.
+4. After loading a save for the first time, change rooms once. This creates the
+   companion log and begins live tracking.
 
 ## If the tracker finds nothing
 
@@ -46,8 +55,8 @@ discoveries are not appearing while you play:
 2. Close and reopen both the game and Mistria Tracker.
 3. In Mistria Tracker Settings, look at the live-tracking status. It is
    informational only; there is nothing to refresh or approve manually.
-4. If the companion was skipped during setup, run the installer again and tick
-   **Live tracking companion (MOMI, recommended)**.
+4. If the companion was skipped during setup, run the installer again and
+   select **Live tracking companion (AIM/MOMI, recommended)**.
 
 Never delete, move, or overwrite a save to troubleshoot the tracker.
 
@@ -58,7 +67,7 @@ Use Settings to switch to “Show everything” or choose English/French.
 
 ## If live tracking is paused
 
-- Make sure MOMI is installed and the companion is enabled and deployed.
+- Make sure AIM or MOMI is installed and the companion is enabled and deployed.
 - Make sure the game is running the approved version.
 - Restart the game after changing the deployed mod.
 - Open Settings to view the live-tracking status.

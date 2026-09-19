@@ -1,6 +1,6 @@
 [package]
 name = "mistria-tracker"
-version = "0.1.3"
+version = "0.1.4"
 description = "Native Fields of Mistria tracker"
 authors = ["Mistria Tracker"]
 edition = "2021"

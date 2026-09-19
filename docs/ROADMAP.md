@@ -1,12 +1,11 @@
 # Mistria Tracker Roadmap
 
-This roadmap applies only to the isolated `testing` branch. The published
-0.1.3 release remains unchanged until a complete, tested release candidate is
-ready. Every stage is read-only with respect to Fields of Mistria saves.
+This roadmap tracks work after the 0.1.4 release candidate. Every stage is
+read-only with respect to Fields of Mistria saves.
 
 ## 1. Security hardening — current priority
 
-Status: implementation in progress on `testing`.
+Status: the core read limits and installer deletion fix are included in 0.1.4.
 
 - Bound tracker-owned backup, vault, snapshot, and companion-log reads so a
   malformed or unexpectedly large local input cannot exhaust memory.
@@ -16,9 +15,9 @@ Status: implementation in progress on `testing`.
 
 ## 2. Reliable live tracking and game discovery — next
 
-Status: game-discovery design and implementation plan are saved. The urgent
-1.0.5 catalog/live-event compatibility patch is committed for testing; game
-discovery begins after the separate security-hardening commit.
+Status: 1.0.5 live-event compatibility, active-profile preservation, and
+validated Steam discovery are included in 0.1.4. Manual game testing remains
+the next reliability checkpoint.
 
 - Replace the hard-coded default Steam path with validated Steam-library
   discovery, bounded drive-root fallback, and one manual folder choice.
@@ -62,9 +61,11 @@ Status: future product design after the reliability work.
 - Adapt the same principle to bugs, crops, artifacts, recipes, gifts, and
   other categories only after their reliable source data is verified.
 
-## 6. Beginner-friendly installer — package last
+## 6. Beginner-friendly installer
 
-Status: starts only after the app features above are stable and verified.
+Status: the first safe automatic Steam-location check, manual fallback, and
+desktop-shortcut choice are included in 0.1.4. Broader installer improvements
+stay on the roadmap.
 
 - Detect the validated game/mods folder automatically and offer the companion
   as a clearly labelled recommended live-tracking component.

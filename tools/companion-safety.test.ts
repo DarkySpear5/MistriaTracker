@@ -166,7 +166,7 @@ function extractFunction(source: string, name: string): string {
 }
 
 describe('passive companion safety boundary', () => {
-  it('offers an optional companion install that only copies mod files into a selected mods folder', () => {
+  it('offers a safe companion install and optional desktop shortcut', () => {
     const installer = readFileSync(INSTALLER_SCRIPT, 'utf8');
 
     const componentsPage = installer.indexOf('Page components');
@@ -174,10 +174,13 @@ describe('passive companion safety boundary', () => {
     expect(componentsPage, 'expected an installer components-choice page').toBeGreaterThanOrEqual(0);
     expect(componentsPage, 'expected the components-choice page before the destination page').toBeLessThan(directoryPage);
     expect(installer).toContain('RequestExecutionLevel highest');
-    expect(installer).toContain('Section /o "Live tracking companion (MOMI, recommended)"');
-    expect(installer).toContain('nsDialogs::SelectFolderDialog');
-    expect(installer).toContain('SetOutPath "$CompanionModsPath\\MistriaTrackerCompanion"');
+    expect(installer).toContain('Section /o "Live tracking companion (AIM/MOMI, recommended)"');
+    expect(installer).toContain('Section /o "Add a desktop shortcut"');
+    expect(installer).toContain('CreateShortcut "$DESKTOP\\\\Mistria Tracker.lnk" "$INSTDIR\\\\mistria-tracker.exe"');
+    expect(installer).toContain('IfFileExists "$GameDirectory\\\\assets.zip"');
+    expect(installer).toContain('SetOutPath "$GameDirectory\\\\mods\\\\MistriaTrackerCompanion"');
     expect(installer).toContain('File /r "..\\companion\\mistria_tracker_companion\\*.*"');
+    expect(installer).not.toContain('RMDir /r');
     expect(installer).not.toContain('.sav');
   });
   it('permits one failure-safe non-mutating filter and no prohibited API family', () => {
@@ -389,4 +392,5 @@ describe('passive companion safety boundary', () => {
     expect(sessionId).toContain('"00000000-0000-7000-8000-"');
     expect(sessionId).toContain('get_timer()');
   });
+
 });
