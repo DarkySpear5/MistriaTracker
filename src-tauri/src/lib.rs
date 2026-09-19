@@ -6,6 +6,7 @@ pub mod domain;
 pub mod instance;
 pub mod journal;
 pub mod live_save;
+pub mod localization;
 pub mod persistence;
 pub mod profiles;
 pub mod safety;
