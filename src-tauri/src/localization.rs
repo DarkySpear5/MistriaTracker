@@ -38,7 +38,9 @@ impl<'de> Deserialize<'de> for LanguagePreference {
             "auto" => Ok(Self::Auto),
             "eng" => Ok(Self::Manual(Language::Eng)),
             "fra" => Ok(Self::Manual(Language::Fra)),
-            _ => Err(serde::de::Error::custom("unsupported tracker language preference")),
+            _ => Err(serde::de::Error::custom(
+                "unsupported tracker language preference",
+            )),
         }
     }
 }
@@ -49,7 +51,9 @@ pub fn effective_language(
 ) -> Language {
     match preference {
         LanguagePreference::Manual(language) => language,
-        LanguagePreference::Auto => steam_manifest_language(game_directory).unwrap_or(Language::Eng),
+        LanguagePreference::Auto => {
+            steam_manifest_language(game_directory).unwrap_or(Language::Eng)
+        }
     }
 }
 
@@ -139,19 +143,30 @@ fn tokenize_vdf(contents: &str) -> Option<Vec<VdfToken>> {
 mod tests {
     use super::*;
     use crate::domain::Language;
-    use std::{fs, path::Path};
+    use std::{
+        fs,
+        path::{Path, PathBuf},
+    };
 
-    fn fixture_game_directory_with_manifest(language: &str) -> std::path::PathBuf {
-        let temporary = tempfile::tempdir().unwrap().keep();
-        let game = temporary.join("steamapps/common/Fields of Mistria");
+    struct GameFixture {
+        _temporary: tempfile::TempDir,
+        game: PathBuf,
+    }
+
+    fn fixture_game_directory_with_manifest(language: &str) -> GameFixture {
+        let temporary = tempfile::tempdir().unwrap();
+        let game = temporary.path().join("steamapps/common/Fields of Mistria");
         fs::create_dir_all(&game).unwrap();
         fs::write(game.join("assets.zip"), b"fixture assets").unwrap();
         fs::write(
-            temporary.join("steamapps/appmanifest_2142790.acf"),
+            temporary.path().join("steamapps/appmanifest_2142790.acf"),
             format!("\"AppState\" {{ \"UserConfig\" {{ \"language\" \"{language}\" }} }}"),
         )
         .unwrap();
-        game
+        GameFixture {
+            _temporary: temporary,
+            game,
+        }
     }
 
     #[test]
@@ -159,8 +174,18 @@ mod tests {
         let game = fixture_game_directory_with_manifest("french");
 
         assert_eq!(
-            effective_language(LanguagePreference::Auto, Some(&game)),
+            effective_language(LanguagePreference::Auto, Some(&game.game)),
             Language::Fra
+        );
+    }
+
+    #[test]
+    fn auto_detects_english_from_the_mistria_manifest() {
+        let game = fixture_game_directory_with_manifest("english");
+
+        assert_eq!(
+            effective_language(LanguagePreference::Auto, Some(&game.game)),
+            Language::Eng
         );
     }
 
@@ -170,11 +195,11 @@ mod tests {
         let malformed = fixture_game_directory_with_manifest("<bad>");
 
         assert_eq!(
-            effective_language(LanguagePreference::Auto, Some(&russian)),
+            effective_language(LanguagePreference::Auto, Some(&russian.game)),
             Language::Eng
         );
         assert_eq!(
-            effective_language(LanguagePreference::Auto, Some(&malformed)),
+            effective_language(LanguagePreference::Auto, Some(&malformed.game)),
             Language::Eng
         );
     }
@@ -184,7 +209,7 @@ mod tests {
         let game = fixture_game_directory_with_manifest("french");
 
         assert_eq!(
-            effective_language(LanguagePreference::Manual(Language::Eng), Some(&game)),
+            effective_language(LanguagePreference::Manual(Language::Eng), Some(&game.game)),
             Language::Eng
         );
     }

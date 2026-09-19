@@ -13,20 +13,21 @@ describe('SettingsPage', () => {
     expect(onChange).toHaveBeenCalledWith({ spoilerMode: 'free', hintsEnabled: false });
   });
 
-  it('offers English and French without changing spoiler settings', () => {
-    const onLanguageChange = vi.fn();
+  it('offers Auto-detect plus manual English and French choices', () => {
+    const onLanguagePreferenceChange = vi.fn();
     render(
       <SettingsPage
         hintsEnabled={false}
-        language="eng"
+        languagePreference="eng"
         onChange={vi.fn()}
-        onLanguageChange={onLanguageChange}
+        onLanguagePreferenceChange={onLanguagePreferenceChange}
         spoilerMode="free"
       />,
     );
 
     fireEvent.click(screen.getByRole('radio', { name: 'Français' }));
-    expect(onLanguageChange).toHaveBeenCalledWith('fra');
+    expect(onLanguagePreferenceChange).toHaveBeenCalledWith('fra');
+    expect(screen.getByRole('radio', { name: 'Auto-detect (recommended)' })).not.toBeChecked();
   });
 
   it('renders safety settings in French when French is selected', () => {

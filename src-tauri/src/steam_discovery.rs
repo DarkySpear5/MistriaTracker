@@ -10,7 +10,8 @@ use std::{
 };
 
 pub const MISTRIA_APP_ID: &str = "2142790";
-const GAME_DIRECTORY_SEGMENTS: [&str; 4] = ["steamapps", "common", "Fields of Mistria", "assets.zip"];
+const GAME_DIRECTORY_SEGMENTS: [&str; 4] =
+    ["steamapps", "common", "Fields of Mistria", "assets.zip"];
 const MAX_STEAM_TEXT_BYTES: u64 = 1024 * 1024;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -31,10 +32,7 @@ pub struct DiscoverySources {
 impl DiscoverySources {
     pub fn from_windows_system(saved_game: Option<PathBuf>) -> Self {
         let steam_root = registered_steam_root();
-        let mut steam_libraries = steam_root
-            .iter()
-            .cloned()
-            .collect::<Vec<_>>();
+        let mut steam_libraries = steam_root.iter().cloned().collect::<Vec<_>>();
         if let Some(root) = steam_root {
             steam_libraries.extend(steam_libraries_from_vdf(&root));
         }
@@ -71,8 +69,14 @@ pub fn discover_game_directory(sources: &DiscoverySources) -> DiscoveryResult {
         .saved_game
         .as_deref()
         .and_then(validate_game_directory)
-        .or_else(|| steam_library_candidates(&sources.steam_libraries).find_map(|path| validate_game_directory(&path)))
-        .or_else(|| bounded_drive_candidates(&sources.drive_roots).find_map(|path| validate_game_directory(&path)))
+        .or_else(|| {
+            steam_library_candidates(&sources.steam_libraries)
+                .find_map(|path| validate_game_directory(&path))
+        })
+        .or_else(|| {
+            bounded_drive_candidates(&sources.drive_roots)
+                .find_map(|path| validate_game_directory(&path))
+        })
         .map_or(DiscoveryResult::NotFound, DiscoveryResult::Found)
 }
 
@@ -89,9 +93,14 @@ fn steam_library_candidates(libraries: &[PathBuf]) -> impl Iterator<Item = PathB
 
 fn bounded_drive_candidates(roots: &[PathBuf]) -> impl Iterator<Item = PathBuf> + '_ {
     roots.iter().flat_map(|root| {
-        [root.join("SteamLibrary"), root.join("Steam"), root.join("Program Files (x86)/Steam"), root.join("Program Files/Steam")]
-            .into_iter()
-            .map(|steam_root| game_directory_for_library(&steam_root))
+        [
+            root.join("SteamLibrary"),
+            root.join("Steam"),
+            root.join("Program Files (x86)/Steam"),
+            root.join("Program Files/Steam"),
+        ]
+        .into_iter()
+        .map(|steam_root| game_directory_for_library(&steam_root))
     })
 }
 
@@ -212,7 +221,10 @@ mod tests {
         let game = fixture_game_directory(temporary.path(), true);
 
         assert_eq!(validate_game_directory(&game), Some(game));
-        assert_eq!(validate_game_directory(&temporary.path().join("missing")), None);
+        assert_eq!(
+            validate_game_directory(&temporary.path().join("missing")),
+            None
+        );
     }
 
     #[test]
@@ -301,9 +313,7 @@ mod tests {
     #[test]
     fn parses_escaped_steam_library_paths() {
         assert_eq!(
-            parse_library_paths(
-                r#""libraryfolders" { "1" { "path" "D:\\SteamLibrary" } }"#
-            ),
+            parse_library_paths(r#""libraryfolders" { "1" { "path" "D:\\SteamLibrary" } }"#),
             vec![std::path::PathBuf::from(r"D:\SteamLibrary")]
         );
     }

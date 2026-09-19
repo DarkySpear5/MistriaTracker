@@ -1,4 +1,6 @@
-export type Language = "eng" | "fra";
+import type { SupportedLocale } from "../i18n";
+
+export type Language = SupportedLocale;
 export type View =
   "overview" | "museum" | "villagers" | "encyclopedia" | "settings";
 export type Source = { view: View; key: string; label: string; entry?: string };

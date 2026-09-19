@@ -29,16 +29,21 @@ pub fn profile_summary(state: &TrackerState) -> Result<Value, TrackerStateError>
 }
 
 pub fn preferences_value(state: &TrackerState) -> Result<Value, TrackerStateError> {
-    serde_json::to_value(state.preferences()?)
-        .map_err(|error| TrackerStateError::Repository(error.into()))
+    let preferences = state.preferences()?;
+    Ok(json!({
+        "language_preference": preferences.language_preference,
+        "effective_language": state.effective_language()?,
+        "spoiler_mode": preferences.spoiler_mode,
+        "hints_enabled": preferences.hints_enabled,
+    }))
 }
 
 pub fn resolve_game_directory_value(
     state: &TrackerState,
 ) -> Result<Option<String>, TrackerStateError> {
-    state.resolved_game_directory().map(|path| {
-        path.map(|path| path.to_string_lossy().into_owned())
-    })
+    state
+        .resolved_game_directory()
+        .map(|path| path.map(|path| path.to_string_lossy().into_owned()))
 }
 
 pub fn save_game_directory_value(

@@ -5,6 +5,7 @@ use mistria_tracker_lib::{
         save_game_directory_value,
     },
     domain::{Language, SpoilerMode},
+    localization::LanguagePreference,
 };
 use std::{fs, io::Write};
 use tempfile::tempdir;
@@ -41,7 +42,7 @@ fn preferences_value_uses_safe_normalized_tracker_preferences() {
     let state = TrackerState::open(directory.path()).unwrap();
     state
         .save_preferences(TrackerPreferences {
-            language: Language::Fra,
+            language_preference: LanguagePreference::Manual(Language::Fra),
             spoiler_mode: SpoilerMode::Free,
             hints_enabled: true,
             game_directory: None,
@@ -51,10 +52,10 @@ fn preferences_value_uses_safe_normalized_tracker_preferences() {
     assert_eq!(
         preferences_value(&state).unwrap(),
         serde_json::json!({
-            "language": "fra",
+            "language_preference": "fra",
+            "effective_language": "fra",
             "spoiler_mode": "free",
-            "hints_enabled": true,
-            "game_directory": null
+            "hints_enabled": true
         })
     );
 }
@@ -64,7 +65,9 @@ fn save_game_directory_rejects_a_folder_without_assets_zip() {
     let directory = tempdir().unwrap();
     let state = TrackerState::open(directory.path()).unwrap();
 
-    assert!(save_game_directory_value(&state, directory.path().to_string_lossy().as_ref()).is_err());
+    assert!(
+        save_game_directory_value(&state, directory.path().to_string_lossy().as_ref()).is_err()
+    );
 }
 
 #[test]

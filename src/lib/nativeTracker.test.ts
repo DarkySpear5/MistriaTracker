@@ -29,13 +29,28 @@ describe('native tracker bridge', () => {
   });
 
   it('reads and saves normalized local preferences', async () => {
-    const preferences = { language: 'fra' as const, spoiler_mode: 'free' as const, hints_enabled: true };
+    const preferences = {
+      language_preference: 'fra' as const,
+      effective_language: 'fra' as const,
+      spoiler_mode: 'free' as const,
+      hints_enabled: true,
+    };
     vi.mocked(invoke).mockResolvedValueOnce(preferences).mockResolvedValueOnce(undefined);
 
     await expect(getPreferences()).resolves.toEqual(preferences);
-    await savePreferences(preferences);
+    await savePreferences({
+      language_preference: preferences.language_preference,
+      spoiler_mode: preferences.spoiler_mode,
+      hints_enabled: preferences.hints_enabled,
+    });
     expect(invoke).toHaveBeenNthCalledWith(1, 'get_preferences');
-    expect(invoke).toHaveBeenNthCalledWith(2, 'save_preferences', { preferences });
+    expect(invoke).toHaveBeenNthCalledWith(2, 'save_preferences', {
+      preferences: {
+        language_preference: 'fra',
+        spoiler_mode: 'free',
+        hints_enabled: true,
+      },
+    });
   });
 
   it('reads a note only for the requested stable item id', async () => {

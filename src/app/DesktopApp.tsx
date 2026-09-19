@@ -28,6 +28,10 @@ import {
 import type { SearchResult } from "../journal/search";
 import { tr } from "../journal/copy";
 import {
+  languageDictionary,
+  type LanguagePreference,
+} from "../i18n";
+import {
   defaultFilters,
   type Filters,
   type Journal,
@@ -60,6 +64,8 @@ export function DesktopApp({
 }: Props) {
   const native = nativeRuntime();
   const [language, setLanguage] = useState(initialLanguage);
+  const [languagePreference, setLanguagePreference] =
+    useState<LanguagePreference>("auto");
   const [spoilers, setSpoilers] = useState(false);
   const [hints, setHints] = useState(false);
   const [journal, setJournal] = useState<Journal | null>(
@@ -109,7 +115,8 @@ export function DesktopApp({
       try {
         const preferences = await getPreferences();
         if (!alive) return;
-        setLanguage(preferences.language);
+        setLanguage(preferences.effective_language);
+        setLanguagePreference(preferences.language_preference);
         setSpoilers(preferences.spoiler_mode === "all");
         setHints(preferences.hints_enabled);
         const resolvedGameDirectory =
@@ -250,7 +257,7 @@ export function DesktopApp({
     scrollRef.current?.scrollTo?.({ top: 0 });
   };
   const persist = async (
-    nextLanguage: Language,
+    nextLanguagePreference: LanguagePreference,
     nextSpoilers: boolean,
     nextHints: boolean,
   ) => {
@@ -258,7 +265,8 @@ export function DesktopApp({
     setSelected(null);
     setHint(null);
     if (!native) {
-      setLanguage(nextLanguage);
+      if (nextLanguagePreference !== "auto") setLanguage(nextLanguagePreference);
+      setLanguagePreference(nextLanguagePreference);
       setSpoilers(nextSpoilers);
       setHints(nextHints);
       return;
@@ -266,11 +274,13 @@ export function DesktopApp({
     setBusy(true);
     try {
       await savePreferences({
-        language: nextLanguage,
+        language_preference: nextLanguagePreference,
         spoiler_mode: nextSpoilers ? "all" : "free",
         hints_enabled: nextHints,
       });
-      setLanguage(nextLanguage);
+      const updatedPreferences = await getPreferences();
+      setLanguage(updatedPreferences.effective_language);
+      setLanguagePreference(updatedPreferences.language_preference);
       setSpoilers(nextSpoilers);
       setHints(nextHints);
       await refresh();
@@ -347,6 +357,7 @@ export function DesktopApp({
         onNavigate: navigate,
       }
     : null;
+  const languageCopy = languageDictionary(language);
   const scope = `${profileKey}:${language}:${spoilers}`;
   return (
     <ArtworkProvider loader={artLoader} scope={scope}>
@@ -463,7 +474,7 @@ export function DesktopApp({
                         type="radio"
                         name="spoilers"
                         checked={!spoilers}
-                        onChange={() => void persist(language, false, hints)}
+                        onChange={() => void persist(languagePreference, false, hints)}
                       />
                     </label>
                     <label className="setting-row">
@@ -475,7 +486,7 @@ export function DesktopApp({
                         type="radio"
                         name="spoilers"
                         checked={spoilers}
-                        onChange={() => void persist(language, true, false)}
+                        onChange={() => void persist(languagePreference, true, false)}
                       />
                     </label>
                     <label className="setting-row">
@@ -489,25 +500,32 @@ export function DesktopApp({
                         checked={hints}
                         disabled={spoilers}
                         onChange={(event) =>
-                          void persist(language, spoilers, event.target.checked)
+                          void persist(languagePreference, spoilers, event.target.checked)
                         }
                       />
                     </label>
                   </div>
                   <div className="settings-card">
                     <h2>{tr(language, "language")}</h2>
+                    <p>{languageCopy.autoDetectHelp}</p>
                     <div className="language-buttons">
                       <button
-                        aria-pressed={language === "eng"}
-                        onClick={() => void persist("eng", spoilers, hints)}
+                        aria-pressed={languagePreference === "auto"}
+                        onClick={() => void persist("auto", spoilers, hints)}
                       >
-                        English
+                        {languageCopy.autoDetect}
                       </button>
                       <button
-                        aria-pressed={language === "fra"}
+                        aria-pressed={languagePreference === "eng"}
+                        onClick={() => void persist("eng", spoilers, hints)}
+                      >
+                        {languageCopy.english}
+                      </button>
+                      <button
+                        aria-pressed={languagePreference === "fra"}
                         onClick={() => void persist("fra", spoilers, hints)}
                       >
-                        Français
+                        {languageCopy.french}
                       </button>
                     </div>
                   </div>

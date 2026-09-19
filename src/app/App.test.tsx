@@ -42,7 +42,7 @@ describe("Desktop journal", () => {
     vi.useFakeTimers();
     vi.mocked(invoke).mockImplementation(async (command) => {
       if (command === "get_preferences")
-        return { language: "eng", spoiler_mode: "free", hints_enabled: false };
+        return { language_preference: "auto", effective_language: "eng", spoiler_mode: "free", hints_enabled: false };
       if (command === "get_profile_summary")
         return { active_profile: active, profiles: ["ari", "amelia"] };
       if (command === "get_journal_snapshot")
@@ -110,7 +110,7 @@ describe("Desktop journal", () => {
     vi.useFakeTimers();
     vi.mocked(invoke).mockImplementation(async (command) => {
       if (command === "get_preferences")
-        return { language: "eng", spoiler_mode: "free", hints_enabled: false };
+        return { language_preference: "auto", effective_language: "eng", spoiler_mode: "free", hints_enabled: false };
       if (command === "get_profile_summary")
         return { active_profile: "ari", profiles: ["ari"] };
       if (command === "get_journal_snapshot") return testJournal;
@@ -162,7 +162,12 @@ describe("Desktop journal", () => {
     }));
     vi.mocked(invoke).mockImplementation(async (command) => {
       if (command === "get_preferences")
-        return { language: "eng", spoiler_mode: "free", hints_enabled: false };
+        return {
+          language_preference: "auto",
+          effective_language: "eng",
+          spoiler_mode: "free",
+          hints_enabled: false,
+        };
       throw new Error("Unexpected command " + command);
     });
 
@@ -185,7 +190,7 @@ describe("Desktop journal", () => {
   it("shows one folder action when automatic discovery cannot find the game", async () => {
     vi.mocked(invoke).mockImplementation(async (command) => {
       if (command === "get_preferences")
-        return { language: "eng", spoiler_mode: "free", hints_enabled: false };
+        return { language_preference: "auto", effective_language: "eng", spoiler_mode: "free", hints_enabled: false };
       throw new Error("Unexpected command " + command);
     });
 
@@ -302,7 +307,7 @@ describe("Desktop journal", () => {
     let imported = false;
     vi.mocked(invoke).mockImplementation(async (command) => {
       if (command === "get_preferences")
-        return { language: "eng", spoiler_mode: "free", hints_enabled: false };
+        return { language_preference: "auto", effective_language: "eng", spoiler_mode: "free", hints_enabled: false };
       if (command === "get_profile_summary")
         return { active_profile: "ari", profiles: ["ari"] };
       if (command === "get_journal_snapshot")
@@ -337,7 +342,7 @@ describe("Desktop journal", () => {
     const backup = vi.fn();
     vi.mocked(invoke).mockImplementation(async (command) => {
       if (command === "get_preferences")
-        return { language: "eng", spoiler_mode: "free", hints_enabled: false };
+        return { language_preference: "auto", effective_language: "eng", spoiler_mode: "free", hints_enabled: false };
       if (command === "get_profile_summary")
         return { active_profile: "ari", profiles: ["ari"] };
       if (command === "get_journal_snapshot") return testJournal;

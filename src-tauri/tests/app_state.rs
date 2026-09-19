@@ -2,6 +2,7 @@ use mistria_tracker_lib::{
     app_state::{TrackerPreferences, TrackerState},
     compatibility::CompatibilityMatrix,
     domain::{Language, ProfileId, SpoilerMode},
+    localization::LanguagePreference,
     persistence::AcceptResult,
     steam_discovery::DiscoverySources,
     tracking::ReadOnlyLogTail,
@@ -51,7 +52,7 @@ fn tracker_preferences_default_to_spoiler_free_and_normalize_hints() {
 
     state
         .save_preferences(TrackerPreferences {
-            language: Language::Fra,
+            language_preference: LanguagePreference::Manual(Language::Fra),
             spoiler_mode: SpoilerMode::All,
             hints_enabled: true,
             game_directory: None,
@@ -61,7 +62,7 @@ fn tracker_preferences_default_to_spoiler_free_and_normalize_hints() {
     assert_eq!(
         state.preferences().unwrap(),
         TrackerPreferences {
-            language: Language::Fra,
+            language_preference: LanguagePreference::Manual(Language::Fra),
             spoiler_mode: SpoilerMode::All,
             hints_enabled: false,
             game_directory: None,
@@ -84,6 +85,32 @@ fn stale_saved_game_directory_falls_through_to_discovery() {
             .resolved_game_directory_from_sources(DiscoverySources::default())
             .unwrap(),
         None
+    );
+}
+
+#[test]
+fn legacy_language_settings_become_auto_detect_without_losing_other_preferences() {
+    let directory = tempdir().unwrap();
+    let state = TrackerState::open(directory.path()).unwrap();
+    let connection = rusqlite::Connection::open(directory.path().join("tracker.sqlite")).unwrap();
+    connection
+        .execute(
+            "INSERT INTO settings (key, value) VALUES (?1, ?2)",
+            (
+                "tracker_preferences",
+                r#"{"language":"fra","spoiler_mode":"all","hints_enabled":true}"#,
+            ),
+        )
+        .unwrap();
+
+    assert_eq!(
+        state.preferences().unwrap(),
+        TrackerPreferences {
+            language_preference: LanguagePreference::Auto,
+            spoiler_mode: SpoilerMode::All,
+            hints_enabled: false,
+            game_directory: None,
+        }
     );
 }
 

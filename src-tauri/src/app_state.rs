@@ -2,6 +2,7 @@ use crate::{
     catalog::{probe, AssetsZip, Catalog, CatalogCacheDir, CatalogExtractor, CatalogProbeReport},
     compatibility::{CompatibilityDecision, CompatibilityMatrix, SaveParserDecision, VersionSet},
     domain::{CompanionEvent, EntityId, EventEnvelope, ItemId, Language, ProfileId, SpoilerMode},
+    localization::{self, LanguagePreference},
     persistence::{AcceptResult, Database, ImportResult, RepoError, Repository},
     safety::paths::GameAssetsPath,
     spoilers::{AppSnapshot, SpoilerPolicy},
@@ -58,13 +59,45 @@ pub struct TrackerState {
 const PREFERENCES_KEY: &str = "tracker_preferences";
 const CATALOG_PARSER_VERSION: u16 = 1;
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct TrackerPreferences {
-    pub language: Language,
+    pub language_preference: LanguagePreference,
     pub spoiler_mode: SpoilerMode,
     pub hints_enabled: bool,
     #[serde(default)]
     pub game_directory: Option<PathBuf>,
+}
+
+#[derive(Deserialize)]
+struct StoredTrackerPreferences {
+    #[serde(default)]
+    language_preference: Option<LanguagePreference>,
+    #[serde(default)]
+    language: Option<Language>,
+    #[serde(default)]
+    spoiler_mode: Option<SpoilerMode>,
+    #[serde(default)]
+    hints_enabled: Option<bool>,
+    #[serde(default)]
+    game_directory: Option<PathBuf>,
+}
+
+impl<'de> Deserialize<'de> for TrackerPreferences {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let stored = StoredTrackerPreferences::deserialize(deserializer)?;
+        // Versions before unified language support stored a direct UI language.
+        // Treat it as Auto so the tracker can match the selected Steam language.
+        let _legacy_language = stored.language;
+        Ok(Self {
+            language_preference: stored.language_preference.unwrap_or_default(),
+            spoiler_mode: stored.spoiler_mode.unwrap_or(SpoilerMode::Free),
+            hints_enabled: stored.hints_enabled.unwrap_or(false),
+            game_directory: stored.game_directory,
+        })
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -77,7 +110,7 @@ pub struct ReadinessReport {
 impl Default for TrackerPreferences {
     fn default() -> Self {
         Self {
-            language: Language::Eng,
+            language_preference: LanguagePreference::Auto,
             spoiler_mode: SpoilerMode::Free,
             hints_enabled: false,
             game_directory: None,
@@ -160,16 +193,29 @@ impl TrackerState {
         let current = self.preferences()?;
         preferences.game_directory = match preferences.game_directory {
             Some(candidate) => Some(
-                validate_game_directory(&candidate).ok_or(TrackerStateError::InvalidGameDirectory)?,
+                validate_game_directory(&candidate)
+                    .ok_or(TrackerStateError::InvalidGameDirectory)?,
             ),
             None => current.game_directory,
         };
-        let serialized = serde_json::to_string(&preferences.normalized()).map_err(RepoError::from)?;
+        let serialized =
+            serde_json::to_string(&preferences.normalized()).map_err(RepoError::from)?;
         self.repository
             .lock()
             .map_err(|_| TrackerStateError::Unavailable)?
             .save_setting(PREFERENCES_KEY, &serialized)?;
         Ok(())
+    }
+
+    /// Resolves the one language used for both Tracker text and catalog names.
+    /// A manual selection wins; Auto reads only the game app manifest.
+    pub fn effective_language(&self) -> Result<Language, TrackerStateError> {
+        let preference = self.preferences()?.language_preference;
+        let game_directory = self.resolved_game_directory()?;
+        Ok(localization::effective_language(
+            preference,
+            game_directory.as_deref(),
+        ))
     }
 
     /// Stores a game location only after opening its direct `assets.zip`.
@@ -367,12 +413,13 @@ impl TrackerState {
             repository.events(&profile_id)?
         };
         let preferences = self.preferences()?;
+        let language = self.effective_language()?;
         let progress = ProfileProgress::from_events(events);
         Ok(Some(SpoilerPolicy.snapshot(
             &progress,
             &catalog,
             preferences.spoiler_mode,
-            preferences.language,
+            language,
         )))
     }
 
@@ -451,6 +498,7 @@ impl TrackerState {
             )
         };
         let preferences = self.preferences()?;
+        let language = self.effective_language()?;
         let journal = self
             .journal
             .lock()
@@ -460,7 +508,7 @@ impl TrackerState {
                 catalog,
                 &evidence,
                 &progress,
-                preferences.language,
+                language,
                 preferences.spoiler_mode,
             );
             snapshot["profile"]["id"] = serde_json::json!(profile.as_str());

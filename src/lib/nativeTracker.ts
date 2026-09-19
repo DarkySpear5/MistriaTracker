@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
+import type { LanguagePreference, SupportedLocale } from '../i18n';
 
 export type ProfileSummary = {
   active_profile: string | null;
@@ -7,11 +8,13 @@ export type ProfileSummary = {
 };
 
 export type NativePreferences = {
-  language: 'eng' | 'fra';
+  language_preference: LanguagePreference;
+  effective_language: SupportedLocale;
   spoiler_mode: 'all' | 'free';
   hints_enabled: boolean;
-  game_directory?: string | null;
 };
+
+export type NativePreferencesInput = Omit<NativePreferences, 'effective_language'>;
 
 export type ActiveSnapshot = {
   collections: { items: { completed: number; total: number } };
@@ -92,7 +95,7 @@ export function importLatestDesktopBackup(): Promise<ExistingImportReport> {
   return invoke<ExistingImportReport>('import_latest_desktop_backup');
 }
 
-export function savePreferences(preferences: NativePreferences): Promise<void> {
+export function savePreferences(preferences: NativePreferencesInput): Promise<void> {
   return invoke<void>('save_preferences', { preferences });
 }
 
