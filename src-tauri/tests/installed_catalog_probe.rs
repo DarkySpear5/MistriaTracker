@@ -1,6 +1,7 @@
 use mistria_tracker_lib::{
     catalog::{AssetsZip, CatalogCacheDir, CatalogExtractor},
     domain::ItemId,
+    journal::catalog::JournalCatalog,
 };
 use std::path::PathBuf;
 use tempfile::tempdir;
@@ -33,4 +34,23 @@ fn installed_assets_archive_has_an_explicit_catalog_fingerprint() {
             .name,
         "Anodonte papyracée"
     );
+}
+
+#[test]
+#[ignore = "requires MISTRIA_TRACKER_ASSETS_ZIP to point to a read-only game assets archive"]
+fn installed_assets_archive_builds_the_full_journal_catalog() {
+    let path = PathBuf::from(
+        std::env::var("MISTRIA_TRACKER_ASSETS_ZIP")
+            .expect("set MISTRIA_TRACKER_ASSETS_ZIP to an assets.zip path"),
+    );
+    let journal = JournalCatalog::extract(&AssetsZip::new(path).unwrap()).unwrap();
+
+    println!(
+        "entries={} villagers={} museum_sets={}",
+        journal.entries.len(),
+        journal.villagers.len(),
+        journal.sets.len()
+    );
+    assert!(journal.entries.len() > 100);
+    assert!(journal.entries.contains_key("paper_pondshell"));
 }
