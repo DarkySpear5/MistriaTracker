@@ -351,6 +351,7 @@ describe('passive companion safety boundary', () => {
       'npc.gift_received',
       'museum.donate_item',
       'game.room_changed',
+      'game.title_entered',
     ]);
     expect(manifest.requires_hooks).toEqual(registeredHooks);
 
@@ -399,6 +400,34 @@ describe('passive companion safety boundary', () => {
     expect(room).toContain(
       'mistria_tracker_companion_emit("profile_activated", undefined, _save_file);',
     );
+  });
+
+  it('starts a new activation generation after returning through the title menu', () => {
+    const gml = readFileSync(COMPANION_GML, 'utf8');
+    const boot = extractFunction(gml, 'mistria_tracker_companion_boot');
+    const tick = extractFunction(gml, 'mistria_tracker_companion_tick');
+    const title = extractFunction(gml, 'mistria_tracker_companion_title_entered');
+    const room = extractFunction(gml, 'mistria_tracker_companion_room_changed');
+
+    expect(boot).toContain(
+      'mmapi_on("game.title_entered", mistria_tracker_companion_title_entered);',
+    );
+    expect(title).toContain(
+      'global.mistria_tracker_companion_runtime.awaiting_session_activation = true;',
+    );
+    expect(title).not.toContain('mistria_tracker_companion_emit(');
+    expect(tick).toContain(
+      'if (global.mistria_tracker_companion_runtime.awaiting_session_activation)',
+    );
+    expect(tick).toContain(
+      'global.mistria_tracker_companion_runtime.session_id = mistria_tracker_companion_session_id();',
+    );
+    expect(tick).toContain('global.mistria_tracker_companion_runtime.sequence = 0;');
+    expect(tick).toContain(
+      'mistria_tracker_companion_emit("profile_activated", undefined, _save_file);',
+    );
+    expect(room).not.toContain('awaiting_session_activation');
+    expect(room).not.toContain('mistria_tracker_companion_session_id()');
   });
 
   it('reports only the active save basename with each profile activation', () => {

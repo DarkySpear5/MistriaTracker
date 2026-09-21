@@ -5,5 +5,5 @@
   "description": "Passively reports local tracker events without changing saves or gameplay.",
   "minInstallerVersion": "0.14.1",
   "manifestVersion": 1,
-  "requires_hooks": ["items.give", "npc.gift_received", "museum.donate_item", "game.room_changed"]
+  "requires_hooks": ["items.give", "npc.gift_received", "museum.donate_item", "game.room_changed", "game.title_entered"]
 }

@@ -10,6 +10,7 @@ function mistria_tracker_companion_boot() {
         session_id: mistria_tracker_companion_session_id(),
         profile_id: undefined,
         pending_gift: undefined,
+        awaiting_session_activation: true,
     };
 
     mmapi_mod_declare("mistria_tracker_companion", "0.1.5");
@@ -18,6 +19,7 @@ function mistria_tracker_companion_boot() {
     mmapi_on("npc.gift_received", mistria_tracker_companion_gift_received);
     mmapi_on("museum.donate_item", mistria_tracker_companion_museum_donate_item);
     mmapi_on("game.room_changed", mistria_tracker_companion_room_changed);
+    mmapi_on("game.title_entered", mistria_tracker_companion_title_entered);
 }
 
 function mistria_tracker_companion_session_id() {
@@ -106,8 +108,24 @@ function mistria_tracker_companion_gift_received(_ctx) {
 }
 
 function mistria_tracker_companion_tick() {
+    if (global.mistria_tracker_companion_runtime.awaiting_session_activation) {
+        var _save_file = mistria_tracker_companion_save_file();
+        var _profile_id = mistria_tracker_companion_profile_id();
+        if (_save_file != undefined && _profile_id != undefined) {
+            global.mistria_tracker_companion_runtime.session_id = mistria_tracker_companion_session_id();
+            global.mistria_tracker_companion_runtime.sequence = 0;
+            global.mistria_tracker_companion_runtime.awaiting_session_activation = false;
+            mistria_tracker_companion_emit("profile_activated", undefined, _save_file);
+        }
+    }
     if (global.mistria_tracker_companion_runtime.pending_gift == undefined) return;
     mistria_tracker_companion_emit_pending_gift();
+}
+
+function mistria_tracker_companion_title_entered(_ctx) {
+    global.mistria_tracker_companion_runtime.awaiting_session_activation = true;
+    global.mistria_tracker_companion_runtime.profile_id = undefined;
+    global.mistria_tracker_companion_runtime.pending_gift = undefined;
 }
 
 function mistria_tracker_companion_emit_pending_gift() {
