@@ -318,6 +318,22 @@ impl TrackerState {
             .map_err(TrackerStateError::from)
     }
 
+    pub fn replace_from_save(
+        &self,
+        source_hash: [u8; 32],
+        profile_id: &ProfileId,
+        game_version: &str,
+        items: &[ItemId],
+        journal: &crate::journal::evidence::JournalEvidence,
+    ) -> Result<(), TrackerStateError> {
+        let journal = serde_json::to_string(journal).map_err(RepoError::from)?;
+        self.repository
+            .lock()
+            .map_err(|_| TrackerStateError::Unavailable)?
+            .replace_save_state(source_hash, profile_id, game_version, items, &journal)
+            .map_err(TrackerStateError::from)
+    }
+
     /// Polls newly appended complete log lines; each event uses the normal fail-closed gate.
     pub fn poll_companion_log(
         &self,

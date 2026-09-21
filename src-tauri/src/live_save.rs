@@ -14,8 +14,11 @@ const LOG_TAIL_LIMIT: usize = 256 * 1024;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ActiveCompanionProfile {
+    pub schema_version: u16,
+    pub companion_version: String,
     pub profile_id: ProfileId,
     pub game_version: String,
+    pub session_id: uuid::Uuid,
     pub save_file: Option<String>,
 }
 
@@ -93,8 +96,11 @@ pub fn active_profile_from_log(
         };
         if matches!(event.event, CompanionEvent::ProfileActivated) {
             return Ok(Some(ActiveCompanionProfile {
+                schema_version: event.schema_version,
+                companion_version: event.companion_version,
                 profile_id: event.profile_id,
                 game_version: event.game_version,
+                session_id: event.session_id,
                 save_file: event.save_file,
             }));
         }

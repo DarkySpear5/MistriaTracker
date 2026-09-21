@@ -67,6 +67,48 @@ mod tests {
         assert_eq!(repo.events(&profile).unwrap().len(), 2);
     }
 
+    #[test]
+    fn replacing_current_save_progress_preserves_notes_and_other_profiles() {
+        let mut repo = fixture_repo();
+        let reloaded = ProfileId::new("1849811906").unwrap();
+        let other = ProfileId::new("249165455").unwrap();
+        let note_entity = crate::domain::EntityId::Item(ItemId::new("paper_pondshell").unwrap());
+        repo.accept_event(&item_event(reloaded.clone())).unwrap();
+        let mut other_event = item_event(other.clone());
+        other_event.session_id = Uuid::from_u128(2);
+        repo.accept_event(&other_event).unwrap();
+        repo.save_note(&reloaded, &note_entity, "Keep this note")
+            .unwrap();
+
+        repo.replace_save_state(
+            [9; 32],
+            &reloaded,
+            "1.0.5",
+            &[ItemId::new("test_seed").unwrap()],
+            r#"{"name":"Ari","farm":"Test Farm"}"#,
+        )
+        .unwrap();
+
+        let reloaded_events = repo.events(&reloaded).unwrap();
+        assert_eq!(reloaded_events.len(), 1);
+        assert!(matches!(
+            &reloaded_events[0].event,
+            CompanionEvent::ItemObtained { item_id, .. } if item_id.as_str() == "test_seed"
+        ));
+        assert_eq!(repo.events(&other).unwrap().len(), 1);
+        assert_eq!(
+            repo.note(&reloaded, &note_entity).unwrap().as_deref(),
+            Some("Keep this note")
+        );
+        assert_eq!(
+            repo.setting("journal_evidence_v1:1849811906")
+                .unwrap()
+                .as_deref(),
+            Some(r#"{"name":"Ari","farm":"Test Farm"}"#)
+        );
+        assert_eq!(repo.active_profile().unwrap(), Some(reloaded));
+    }
+
     fn fixture_repo() -> Repository {
         Repository::in_memory().unwrap()
     }

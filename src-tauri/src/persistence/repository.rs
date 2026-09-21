@@ -130,6 +130,75 @@ impl Repository {
         Ok(ImportResult::Inserted)
     }
 
+    /// Replaces the current progress projected from one confirmed save while
+    /// preserving profile-scoped notes and every other profile. This is used
+    /// when a newly loaded game session makes an older on-disk save
+    /// authoritative again after unsaved live events.
+    pub fn replace_save_state(
+        &mut self,
+        source_hash: [u8; 32],
+        profile_id: &ProfileId,
+        game_version: &str,
+        items: &[ItemId],
+        journal_evidence_json: &str,
+    ) -> Result<(), RepoError> {
+        let transaction = self.connection.transaction()?;
+        transaction.execute(
+            "INSERT OR IGNORE INTO profiles (id) VALUES (?1)",
+            params![profile_id.as_str()],
+        )?;
+        transaction.execute(
+            "DELETE FROM accepted_events WHERE profile_id = ?1",
+            params![profile_id.as_str()],
+        )?;
+        transaction.execute(
+            "DELETE FROM imported_backups WHERE profile_id = ?1",
+            params![profile_id.as_str()],
+        )?;
+
+        let source_sha256 = hex(&source_hash);
+        transaction.execute(
+            "INSERT INTO imported_backups (source_sha256, profile_id, game_version, imported_at) VALUES (?1, ?2, ?3, datetime('now'))",
+            params![source_sha256, profile_id.as_str(), game_version],
+        )?;
+        let session_id = imported_session_id(source_hash);
+        for (index, item_id) in items.iter().enumerate() {
+            let event = EventEnvelope {
+                schema_version: EVENT_SCHEMA_VERSION,
+                companion_version: "save-reconciliation-1".to_owned(),
+                game_version: game_version.to_owned(),
+                profile_id: profile_id.clone(),
+                session_id,
+                sequence: (index + 1) as u64,
+                save_file: None,
+                event: CompanionEvent::ItemObtained {
+                    item_id: item_id.clone(),
+                    count: 1,
+                },
+            };
+            transaction.execute(
+                "INSERT INTO accepted_events (session_id, sequence, profile_id, event_json) VALUES (?1, ?2, ?3, ?4)",
+                params![
+                    event.session_id.to_string(),
+                    event.sequence,
+                    profile_id.as_str(),
+                    serde_json::to_string(&event)?,
+                ],
+            )?;
+        }
+        transaction.execute(
+            "INSERT INTO settings (key, value) VALUES ('active_profile', ?1) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![profile_id.as_str()],
+        )?;
+        let evidence_key = format!("journal_evidence_v1:{}", profile_id.as_str());
+        transaction.execute(
+            "INSERT INTO settings (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![evidence_key, journal_evidence_json],
+        )?;
+        transaction.commit()?;
+        Ok(())
+    }
+
     pub fn events(&self, profile_id: &ProfileId) -> Result<Vec<EventEnvelope>, RepoError> {
         let mut statement = self.connection.prepare(
             "SELECT event_json FROM accepted_events WHERE profile_id = ?1 ORDER BY rowid",

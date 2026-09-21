@@ -1,9 +1,12 @@
 use crate::{
     app_state::{TrackerPreferences, TrackerState, TrackerStateError},
     catalog::{cached_item_icon, CatalogCacheDir},
-    compatibility::CompatibilityMatrix,
+    compatibility::{CompatibilityDecision, CompatibilityMatrix, VersionSet},
     domain::ProfileId,
-    live_save::{newest_save_for_profile, save_for_companion_filename},
+    live_save::{
+        active_profile_from_log, newest_save_for_profile, save_for_companion_filename,
+        ActiveCompanionProfile,
+    },
     persistence::ImportResult,
     safety::paths::GameAssetsPath,
     safety::paths::{CompanionLogPath, SelectedSavePath},
@@ -148,9 +151,10 @@ pub fn visible_item_icon_value(
 
 pub(crate) struct LiveTrackingSession {
     passive: PassiveTrackingSession,
+    companion_log: PathBuf,
     saves_directory: PathBuf,
     tracker_local_data: PathBuf,
-    imported_save_file: Option<String>,
+    reconciled_activation: Option<ActiveCompanionProfile>,
 }
 
 pub struct LiveTrackingRuntime(pub(crate) Mutex<Option<LiveTrackingSession>>);
@@ -240,6 +244,7 @@ pub fn start_live_tracking_value(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 fn start_live_tracking_value_with_compatibility(
     state: &TrackerState,
     runtime: &LiveTrackingRuntime,
@@ -263,14 +268,22 @@ fn start_live_tracking_value_with_compatibility(
                 error.to_string(),
             )))
         })?;
+    let active = active_profile_from_log(log.as_path()).map_err(|error| {
+        TrackerStateError::Repository(crate::persistence::RepoError::Io(std::io::Error::other(
+            error.to_string(),
+        )))
+    })?;
+    let reconciled_activation =
+        reconcile_activation(state, active, saves_directory, tracker_local_data, matrix)?;
     *runtime
         .0
         .lock()
         .map_err(|_| TrackerStateError::Unavailable)? = Some(LiveTrackingSession {
         passive: session,
+        companion_log: log.as_path().to_path_buf(),
         saves_directory: saves_directory.to_path_buf(),
         tracker_local_data: tracker_local_data.to_path_buf(),
-        imported_save_file: None,
+        reconciled_activation,
     });
     Ok(())
 }
@@ -295,31 +308,62 @@ fn poll_live_tracking_value_with_compatibility(
     let session = runtime
         .as_mut()
         .ok_or(TrackerStateError::LiveTrackingPaused)?;
+    let active = active_profile_from_log(&session.companion_log).map_err(|error| {
+        TrackerStateError::Repository(crate::persistence::RepoError::Io(std::io::Error::other(
+            error.to_string(),
+        )))
+    })?;
+    let reconciled = if active != session.reconciled_activation {
+        let previous = session.reconciled_activation.clone();
+        session.reconciled_activation = reconcile_activation(
+            state,
+            active,
+            &session.saves_directory,
+            &session.tracker_local_data,
+            matrix,
+        )?;
+        session.reconciled_activation != previous
+    } else {
+        false
+    };
     let accepted = session.passive.poll(state, matrix).map_err(|error| {
         TrackerStateError::Repository(crate::persistence::RepoError::Io(std::io::Error::other(
             error.to_string(),
         )))
     })?;
-    if !accepted.is_empty() {
-        if let (Some(profile_id), Some(save_file)) =
-            (state.active_profile()?, state.active_save_file()?)
-        {
-            if session.imported_save_file.as_deref() != Some(save_file.as_str()) {
-                let imported = import_confirmed_live_save_value(
-                    state,
-                    &profile_id,
-                    Some(&save_file),
-                    &session.saves_directory,
-                    &session.tracker_local_data,
-                    matrix,
-                )?;
-                if imported.is_some() {
-                    session.imported_save_file = Some(save_file);
-                }
-            }
-        }
+    if reconciled && accepted.is_empty() {
+        return Ok(1);
     }
     Ok(accepted.len())
+}
+
+fn reconcile_activation(
+    state: &TrackerState,
+    active: Option<ActiveCompanionProfile>,
+    saves_directory: &std::path::Path,
+    tracker_local_data: &std::path::Path,
+    matrix: &CompatibilityMatrix,
+) -> Result<Option<ActiveCompanionProfile>, TrackerStateError> {
+    let Some(active) = active else {
+        return Ok(None);
+    };
+    if matrix.decision(&VersionSet::new(
+        active.game_version.clone(),
+        active.companion_version.clone(),
+        active.schema_version,
+    )) != CompatibilityDecision::FullySupported
+    {
+        return Ok(None);
+    }
+    let imported = import_confirmed_live_save_value(
+        state,
+        &active.profile_id,
+        active.save_file.as_deref(),
+        saves_directory,
+        tracker_local_data,
+        matrix,
+    )?;
+    Ok(imported.map(|_| active))
 }
 
 /// Imports one save file explicitly selected by the player. The original is
@@ -345,7 +389,13 @@ pub fn import_selected_save_value(
                 error.to_string(),
             )))
         })?;
-    import_snapshot_value(state, snapshot, profile_id, &compatibility)
+    import_snapshot_value(
+        state,
+        snapshot,
+        profile_id,
+        &compatibility,
+        SaveImportMode::Merge,
+    )
 }
 
 /// Imports the exact save file reported by the companion for the confirmed
@@ -385,7 +435,20 @@ pub fn import_confirmed_live_save_value(
                 error.to_string(),
             )))
         })?;
-    import_snapshot_value(state, snapshot, profile_id.clone(), compatibility).map(Some)
+    import_snapshot_value(
+        state,
+        snapshot,
+        profile_id.clone(),
+        compatibility,
+        SaveImportMode::Replace,
+    )
+    .map(Some)
+}
+
+#[derive(Clone, Copy)]
+enum SaveImportMode {
+    Merge,
+    Replace,
 }
 
 fn import_snapshot_value(
@@ -393,6 +456,7 @@ fn import_snapshot_value(
     snapshot: Snapshot,
     profile_id: ProfileId,
     compatibility: &CompatibilityMatrix,
+    mode: SaveImportMode,
 ) -> Result<Value, TrackerStateError> {
     let result = (|| {
         let bytes = std::fs::read(&snapshot.path).map_err(crate::persistence::RepoError::from)?;
@@ -423,13 +487,28 @@ fn import_snapshot_value(
                     std::io::Error::other(error.to_string()),
                 ))
             })?;
-        let imported = state.import_existing_items(
-            discoveries.source_hash,
-            &discoveries.profile_id,
-            &discoveries.game_version,
-            &discoveries.items,
-        )?;
-        state.store_journal_evidence(&discoveries.profile_id, &discoveries.journal)?;
+        let imported = match mode {
+            SaveImportMode::Merge => {
+                let imported = state.import_existing_items(
+                    discoveries.source_hash,
+                    &discoveries.profile_id,
+                    &discoveries.game_version,
+                    &discoveries.items,
+                )?;
+                state.store_journal_evidence(&discoveries.profile_id, &discoveries.journal)?;
+                imported
+            }
+            SaveImportMode::Replace => {
+                state.replace_from_save(
+                    discoveries.source_hash,
+                    &discoveries.profile_id,
+                    &discoveries.game_version,
+                    &discoveries.items,
+                    &discoveries.journal,
+                )?;
+                ImportResult::Inserted
+            }
+        };
         Ok(json!({
             "status": if matches!(imported, ImportResult::Inserted) {
                 "imported"
@@ -462,7 +541,7 @@ mod tests {
             vault::{vault_bytes, Fixture},
         },
     };
-    use std::fs;
+    use std::{fs, io::Write};
 
     #[test]
     fn derives_the_mod_data_and_sibling_saves_paths_from_local_app_data() {
@@ -749,6 +828,190 @@ mod tests {
             state.journal_snapshot().unwrap().unwrap()["profile"],
             serde_json::json!({"id":"331655283","name":"Ari","farm":"Test Farm"})
         );
+
+        fs::OpenOptions::new()
+            .append(true)
+            .open(&log)
+            .unwrap()
+            .write_all(concat!(
+                "MISTRIA_TRACKER_EVENT|{\"schema_version\":1,\"companion_version\":\"0.1.5\",\"game_version\":\"1.0.5\",\"profile_id\":\"331655283\",\"session_id\":\"00000000-0000-7000-8000-000000000003\",\"sequence\":1,\"type\":\"profile_activated\",\"save_file\":\"game-331655283-42.sav\"}\n",
+                "MISTRIA_TRACKER_EVENT|{\"schema_version\":1,\"companion_version\":\"0.1.5\",\"game_version\":\"1.0.5\",\"profile_id\":\"331655283\",\"session_id\":\"00000000-0000-7000-8000-000000000003\",\"sequence\":2,\"type\":\"item_obtained\",\"payload\":{\"item_id\":\"paper_pondshell\",\"count\":1}}\n"
+            ).as_bytes())
+            .unwrap();
+        assert_eq!(
+            poll_live_tracking_value_with_compatibility(&state, &runtime, &matrix).unwrap(),
+            2
+        );
+        assert_eq!(discovered_count(&state), 1);
+    }
+
+    #[test]
+    fn live_tracking_start_imports_the_latest_confirmed_save_name_before_new_log_events() {
+        let fixture = Fixture::new();
+        let game = fixture.local.join("game");
+        fs::create_dir(&game).unwrap();
+        let catalog = fixture_assets();
+        fs::copy(catalog.source.as_path(), game.join("assets.zip")).unwrap();
+        let mod_data = fixture.local.join("FieldsOfMistria");
+        let logs = mod_data.join("mistria_tracker_companion/logs");
+        fs::create_dir_all(&logs).unwrap();
+        fs::write(
+            logs.join("mistria_tracker_companion.log"),
+            "MISTRIA_TRACKER_EVENT|{\"schema_version\":1,\"companion_version\":\"0.1.5\",\"game_version\":\"1.0.5\",\"profile_id\":\"331655283\",\"session_id\":\"00000000-0000-7000-8000-000000000001\",\"sequence\":1,\"type\":\"profile_activated\",\"save_file\":\"game-331655283-42.sav\"}\n",
+        )
+        .unwrap();
+        fs::write(
+            fixture.saves.join("game-331655283-42.sav"),
+            vault_bytes(&[
+                (
+                    "info",
+                    serde_json::json!({"version":{"major":1,"minor":0,"patch":5,"pre":null}}),
+                ),
+                (
+                    "header",
+                    serde_json::json!({"name":"Ari","farm_name":"Test Farm"}),
+                ),
+                ("player", serde_json::json!({"items_acquired":[]})),
+            ]),
+        )
+        .unwrap();
+        let matrix = live_test_matrix();
+        let state = TrackerState::from_repository(Repository::in_memory().unwrap());
+        let runtime = LiveTrackingRuntime(Mutex::new(None));
+
+        start_live_tracking_value_with_compatibility(
+            &state,
+            &runtime,
+            game.to_string_lossy().as_ref(),
+            mod_data.to_string_lossy().as_ref(),
+            &fixture.saves,
+            &fixture.local,
+            &catalog.cache,
+            &matrix,
+        )
+        .unwrap();
+
+        assert_eq!(
+            state.journal_snapshot().unwrap().unwrap()["profile"],
+            serde_json::json!({"id":"331655283","name":"Ari","farm":"Test Farm"})
+        );
+    }
+
+    #[test]
+    fn new_game_session_reloading_the_same_save_removes_unsaved_live_discoveries() {
+        let fixture = Fixture::new();
+        let game = fixture.local.join("game");
+        fs::create_dir(&game).unwrap();
+        let catalog = fixture_assets();
+        fs::copy(catalog.source.as_path(), game.join("assets.zip")).unwrap();
+        let mod_data = fixture.local.join("FieldsOfMistria");
+        let logs = mod_data.join("mistria_tracker_companion/logs");
+        fs::create_dir_all(&logs).unwrap();
+        let log = logs.join("mistria_tracker_companion.log");
+        fs::write(&log, "old history\n").unwrap();
+        fs::write(
+            fixture.saves.join("game-331655283-42.sav"),
+            vault_bytes(&[
+                (
+                    "info",
+                    serde_json::json!({"version":{"major":1,"minor":0,"patch":5,"pre":null}}),
+                ),
+                (
+                    "header",
+                    serde_json::json!({"name":"Ari","farm_name":"Test Farm"}),
+                ),
+                ("player", serde_json::json!({"items_acquired":[]})),
+            ]),
+        )
+        .unwrap();
+        let matrix = live_test_matrix();
+        let state = TrackerState::from_repository(Repository::in_memory().unwrap());
+        state
+            .load_catalog(&catalog.source, &catalog.cache, &matrix)
+            .unwrap();
+        import_confirmed_live_save_value(
+            &state,
+            &ProfileId::new("331655283").unwrap(),
+            Some("game-331655283-42.sav"),
+            &fixture.saves,
+            &fixture.local,
+            &matrix,
+        )
+        .unwrap()
+        .unwrap();
+        let runtime = LiveTrackingRuntime(Mutex::new(None));
+        start_live_tracking_value_with_compatibility(
+            &state,
+            &runtime,
+            game.to_string_lossy().as_ref(),
+            mod_data.to_string_lossy().as_ref(),
+            &fixture.saves,
+            &fixture.local,
+            &catalog.cache,
+            &matrix,
+        )
+        .unwrap();
+
+        fs::OpenOptions::new()
+            .append(true)
+            .open(&log)
+            .unwrap()
+            .write_all(b"MISTRIA_TRACKER_EVENT|{\"schema_version\":1,\"companion_version\":\"0.1.5\",\"game_version\":\"1.0.5\",\"profile_id\":\"331655283\",\"session_id\":\"00000000-0000-7000-8000-000000000001\",\"sequence\":2,\"type\":\"item_obtained\",\"payload\":{\"item_id\":\"paper_pondshell\",\"count\":1}}\n")
+            .unwrap();
+        assert_eq!(
+            poll_live_tracking_value_with_compatibility(&state, &runtime, &matrix).unwrap(),
+            1
+        );
+        assert_eq!(discovered_count(&state), 1);
+
+        fs::OpenOptions::new()
+            .append(true)
+            .open(&log)
+            .unwrap()
+            .write_all(b"MISTRIA_TRACKER_EVENT|{\"schema_version\":1,\"companion_version\":\"0.1.5\",\"game_version\":\"1.0.5\",\"profile_id\":\"331655283\",\"session_id\":\"00000000-0000-7000-8000-000000000002\",\"sequence\":1,\"type\":\"profile_activated\",\"save_file\":\"game-331655283-42.sav\"}\n")
+            .unwrap();
+        assert_eq!(
+            poll_live_tracking_value_with_compatibility(&state, &runtime, &matrix).unwrap(),
+            1
+        );
+        assert_eq!(discovered_count(&state), 0);
+        assert_eq!(
+            state.journal_snapshot().unwrap().unwrap()["profile"],
+            serde_json::json!({"id":"331655283","name":"Ari","farm":"Test Farm"})
+        );
+    }
+
+    fn live_test_matrix() -> CompatibilityMatrix {
+        serde_json::from_value(serde_json::json!({
+            "records": [
+                {
+                    "game_version":"synthetic-1",
+                    "event_schema_versions":[1],
+                    "companion_versions":["0.1.x"],
+                    "save_parser_versions":[1],
+                    "catalog_parser_versions":[1],
+                    "probe_required":false
+                },
+                {
+                    "game_version":"1.0.5",
+                    "event_schema_versions":[1],
+                    "companion_versions":["0.1.x"],
+                    "save_parser_versions":[1],
+                    "catalog_parser_versions":[],
+                    "probe_required":false
+                }
+            ]
+        }))
+        .unwrap()
+    }
+
+    fn discovered_count(state: &TrackerState) -> usize {
+        state.journal_snapshot().unwrap().unwrap()["entries"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|entry| entry["found"].as_bool() == Some(true))
+            .count()
     }
 }
 
