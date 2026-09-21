@@ -106,6 +106,7 @@ impl Repository {
                 profile_id: profile_id.clone(),
                 session_id,
                 sequence: (index + 1) as u64,
+                save_file: None,
                 event: CompanionEvent::ItemObtained {
                     item_id: item_id.clone(),
                     count: 1,

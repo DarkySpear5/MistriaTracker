@@ -20,7 +20,7 @@
       "game_version": "1.0.5",
       "event_schema_versions": [1],
       "companion_versions": ["0.1.x"],
-      "save_parser_versions": [],
+      "save_parser_versions": [1],
       "catalog_parser_versions": [],
       "probe_required": false
     },

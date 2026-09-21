@@ -99,6 +99,28 @@ fn published_schema_forbids_profile_activation_payloads() {
 }
 
 #[test]
+fn profile_activation_accepts_only_a_sanitized_save_basename() {
+    let exact = r#"{"schema_version":1,"companion_version":"0.1.5","game_version":"1.0.5","profile_id":"331655283","session_id":"018f0000-0000-7000-8000-000000000001","sequence":7,"type":"profile_activated","save_file":"game-331655283-1725841886.sav"}"#;
+    assert_eq!(
+        EventEnvelope::from_json(exact)
+            .unwrap()
+            .save_file
+            .as_deref(),
+        Some("game-331655283-1725841886.sav")
+    );
+    for invalid in [
+        "../game-331655283-1725841886.sav",
+        "game-1849811906-1725841886.sav",
+        "game-331655283-1725841886.txt",
+    ] {
+        assert!(EventEnvelope::from_json(
+            &exact.replace("game-331655283-1725841886.sav", invalid,)
+        )
+        .is_err());
+    }
+}
+
+#[test]
 fn direct_deserialization_enforces_the_event_contract() {
     assert!(serde_json::from_str::<EventEnvelope>(ITEM_EVENT).is_ok());
     assert!(serde_json::from_str::<EventEnvelope>(&ITEM_EVENT.replacen(

@@ -9,7 +9,7 @@ if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
 New-Item -ItemType Directory -Path $outDir | Out-Null
 Copy-Item -LiteralPath $exe -Destination (Join-Path $outDir 'MistriaTracker.exe')
 Set-Content -LiteralPath (Join-Path $outDir 'README.txt') -Value "Run MistriaTracker.exe. This portable build does not install services, modify game saves, or require administrator access." -Encoding UTF8
-Compress-Archive -LiteralPath (Join-Path $outDir '*') -DestinationPath $zip -CompressionLevel Optimal
+Compress-Archive -Path (Join-Path $outDir '*') -DestinationPath $zip -CompressionLevel Optimal
 $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash
 Set-Content -LiteralPath ($zip + '.sha256') -Value "$hash  MistriaTracker-0.1.5-portable.zip" -Encoding ASCII
 Write-Host "Created $zip"

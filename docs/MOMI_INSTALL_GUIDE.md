@@ -21,11 +21,10 @@ replace game values.
    recommended)** selected. Setup finds normal Steam installs automatically.
    If it cannot, select the *game folder containing `assets.zip`*—not the
    `mods` folder.
-3. Launch **Mistria Tracker**, open Settings, and choose **Load save file**.
-   Select a `.sav` file. Tracker reads a temporary copy and never changes the
-   original save. If the save's game version is not approved for import yet,
-   Tracker reports that without changing the save or creating tracker
-   discoveries.
+3. Launch **Mistria Tracker**, load your character, and change rooms once.
+   Tracker automatically identifies that exact save slot and reads only a
+   temporary copy. Settings > **Load save file** remains available as a manual
+   fallback. Tracker never changes the original save.
 4. Keep only one tracker window open. A second launch focuses the existing
    window.
 
@@ -43,11 +42,11 @@ replace game values.
 1. Start Fields of Mistria through MOMI, then open Mistria Tracker.
 2. The tracker automatically checks whether live tracking is available. There
    is nothing to refresh or approve manually.
-3. When the companion is detected, new discoveries appear in the tracker while
-   you play. The tracker reads the companion's isolated log and never writes to
-   a Fields of Mistria save.
-4. After loading a save for the first time, change rooms once. This creates the
-   companion log and begins live tracking.
+3. After loading a save, change rooms once. This creates the companion log,
+   identifies the exact active save, imports its approved existing data from a
+   temporary read-only copy, and begins live tracking.
+4. New discoveries then appear automatically while you play. The tracker reads
+   the companion's isolated log and never writes to a Fields of Mistria save.
 
 ## If the tracker finds nothing
 

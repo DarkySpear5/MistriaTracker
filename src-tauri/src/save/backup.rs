@@ -42,7 +42,7 @@ pub fn discoveries_from_bytes(
     let vault = VaultReader::read(bytes)?;
     let game_version = EvidenceExtractor::game_version(&vault)?;
     let evidence = EvidenceExtractor::new(profile_id.clone(), compatibility).extract(&vault)?;
-    let journal = if game_version == "1.0.4" {
+    let journal = if matches!(game_version.as_str(), "1.0.4" | "1.0.5") {
         crate::journal::evidence::JournalEvidence::from_vault(&vault)?
     } else {
         Default::default()

@@ -38,7 +38,7 @@ pub fn run() {
             let state = app_state::TrackerState::open(&tracker_data_dir)
                 .map_err(|error| -> Box<dyn Error> { Box::new(error) })?;
             app.manage(state);
-            app.manage(commands::LiveTrackingRuntime(std::sync::Mutex::new(None)));
+            app.manage(commands::LiveTrackingRuntime::default());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

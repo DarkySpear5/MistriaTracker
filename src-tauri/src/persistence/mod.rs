@@ -79,6 +79,7 @@ mod tests {
             profile_id,
             session_id: Uuid::nil(),
             sequence: 1,
+            save_file: None,
             event: CompanionEvent::ItemObtained {
                 item_id: ItemId::new("paper_pondshell").unwrap(),
                 count: 1,

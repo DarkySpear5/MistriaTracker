@@ -19,6 +19,10 @@
     "profile_id": { "type": "string", "pattern": "^[0-9]+$" },
     "session_id": { "type": "string", "format": "uuid" },
     "sequence": { "type": "integer", "minimum": 0 },
+    "save_file": {
+      "type": "string",
+      "pattern": "^game-[0-9]+-(?:autosave|[0-9]+)\\.sav$"
+    },
     "type": {
       "type": "string",
       "enum": [
@@ -35,6 +39,9 @@
       "if": { "properties": { "type": { "const": "profile_activated" } } },
       "then": {
         "not": { "required": ["payload"] }
+      },
+      "else": {
+        "not": { "required": ["save_file"] }
       }
     },
     {

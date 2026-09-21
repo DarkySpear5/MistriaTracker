@@ -182,7 +182,7 @@ mod tests {
     }
 
     #[test]
-    fn embedded_1_0_5_approval_allows_live_events_but_not_unverified_save_imports() {
+    fn embedded_1_0_5_approval_allows_live_events_catalogs_and_narrow_save_imports() {
         let matrix = CompatibilityMatrix::embedded().unwrap();
 
         assert_eq!(
@@ -198,7 +198,7 @@ mod tests {
         );
         assert_eq!(
             matrix.save_parser_decision("1.0.5", 1),
-            SaveParserDecision::Unsupported
+            SaveParserDecision::Verified
         );
     }
 }

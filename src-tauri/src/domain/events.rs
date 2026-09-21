@@ -14,6 +14,8 @@ pub struct EventEnvelope {
     pub profile_id: ProfileId,
     pub session_id: Uuid,
     pub sequence: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub save_file: Option<String>,
     #[serde(flatten)]
     pub event: CompanionEvent,
 }
@@ -86,6 +88,7 @@ impl EventEnvelope {
             profile_id: envelope.profile_id,
             session_id: envelope.session_id,
             sequence: envelope.sequence,
+            save_file: envelope.save_file,
             event: envelope.event,
         })
     }
@@ -124,6 +127,8 @@ struct RawEventEnvelope {
     profile_id: ProfileId,
     session_id: Uuid,
     sequence: u64,
+    #[serde(default)]
+    save_file: Option<String>,
     #[serde(flatten)]
     event: CompanionEvent,
 }
@@ -164,7 +169,32 @@ fn validate_event_shape(value: &Value) -> Result<(), EventError> {
     ];
 
     match event_type {
-        "profile_activated" => {}
+        "profile_activated" => {
+            allowed.push("save_file");
+            if let Some(save_file) = envelope.get("save_file") {
+                let save_file = save_file.as_str().ok_or_else(|| {
+                    EventError::InvalidContract("save_file must be a string".to_owned())
+                })?;
+                let profile_id = envelope
+                    .get("profile_id")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| {
+                        EventError::InvalidContract("profile_id must be a string".to_owned())
+                    })?;
+                let prefix = format!("game-{profile_id}-");
+                let slot = save_file
+                    .strip_prefix(&prefix)
+                    .and_then(|value| value.strip_suffix(".sav"));
+                if !slot.is_some_and(|slot| {
+                    slot == "autosave"
+                        || (!slot.is_empty() && slot.bytes().all(|byte| byte.is_ascii_digit()))
+                }) {
+                    return Err(EventError::InvalidContract(
+                        "save_file must be the active Fields of Mistria save basename".to_owned(),
+                    ));
+                }
+            }
+        }
         "item_obtained" => {
             allowed.push("payload");
             validate_payload(envelope, &["item_id", "count"])?;

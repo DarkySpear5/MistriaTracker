@@ -266,13 +266,30 @@ impl TrackerState {
             .repository
             .lock()
             .map_err(|_| TrackerStateError::Unavailable)?;
+        let activated_save = if matches!(event.event, CompanionEvent::ProfileActivated) {
+            Some(event.save_file.clone().unwrap_or_default())
+        } else {
+            None
+        };
         let accepted = repository.accept_event(&event)?;
         if matches!(event.event, CompanionEvent::ProfileActivated)
             || repository.active_profile()?.is_none()
         {
             repository.activate_profile(&event.profile_id)?;
         }
+        if let Some(save_file) = activated_save {
+            repository.save_setting("active_save_file", &save_file)?;
+        }
         Ok(accepted)
+    }
+
+    pub fn active_save_file(&self) -> Result<Option<String>, TrackerStateError> {
+        Ok(self
+            .repository
+            .lock()
+            .map_err(|_| TrackerStateError::Unavailable)?
+            .setting("active_save_file")?
+            .filter(|value| !value.is_empty()))
     }
 
     pub fn ingest_companion_log_line(

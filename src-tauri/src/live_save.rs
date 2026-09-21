@@ -16,6 +16,7 @@ const LOG_TAIL_LIMIT: usize = 256 * 1024;
 pub struct ActiveCompanionProfile {
     pub profile_id: ProfileId,
     pub game_version: String,
+    pub save_file: Option<String>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -52,6 +53,29 @@ pub fn newest_save_for_profile(
     Ok(candidate)
 }
 
+/// Resolves only the basename reported by the companion for the same profile.
+/// Directory components and another profile's save are rejected before the
+/// canonical game-save path boundary is applied.
+pub fn save_for_companion_filename(
+    saves_directory: &Path,
+    profile_id: &ProfileId,
+    save_file: &str,
+) -> Result<GameSavePath, LiveSaveError> {
+    let relative = Path::new(save_file);
+    let expected_prefix = format!("game-{}-", profile_id.as_str());
+    if relative.components().count() != 1
+        || relative.file_name().and_then(|name| name.to_str()) != Some(save_file)
+        || !save_file.starts_with(&expected_prefix)
+        || !save_file.ends_with(".sav")
+    {
+        return Err(LiveSaveError::SavePath(
+            GameSavePathError::OutsideSavesDirectory,
+        ));
+    }
+    GameSavePath::new(saves_directory, &saves_directory.join(save_file))
+        .map_err(LiveSaveError::from)
+}
+
 /// Reads at most the end of the companion's isolated log and returns the last
 /// exact profile activation. Item events are deliberately not replayed here;
 /// the live tail owns those instant updates.
@@ -71,6 +95,7 @@ pub fn active_profile_from_log(
             return Ok(Some(ActiveCompanionProfile {
                 profile_id: event.profile_id,
                 game_version: event.game_version,
+                save_file: event.save_file,
             }));
         }
     }
@@ -116,7 +141,7 @@ fn game_process_is_running(tasklist: &str) -> bool {
 mod tests {
     use super::{
         active_profile_from_log, game_process_is_running, newest_save_for_profile, read_log_tail,
-        LOG_TAIL_LIMIT,
+        save_for_companion_filename, LOG_TAIL_LIMIT,
     };
     use crate::domain::ProfileId;
     use std::fs;
@@ -137,6 +162,37 @@ mod tests {
             .unwrap();
 
         assert_eq!(selected.as_path(), fs::canonicalize(matching).unwrap());
+    }
+
+    #[test]
+    fn selects_the_exact_companion_save_instead_of_a_newer_slot_for_the_same_profile() {
+        let directory = tempdir().unwrap();
+        let saves = directory.path().join("saves");
+        fs::create_dir(&saves).unwrap();
+        let loaded = saves.join("game-331655283-100.sav");
+        fs::write(&loaded, b"loaded").unwrap();
+        fs::write(saves.join("game-331655283-999.sav"), b"newer slot").unwrap();
+
+        let selected = save_for_companion_filename(
+            &saves,
+            &ProfileId::new("331655283").unwrap(),
+            "game-331655283-100.sav",
+        )
+        .unwrap();
+
+        assert_eq!(selected.as_path(), fs::canonicalize(loaded).unwrap());
+        assert!(save_for_companion_filename(
+            &saves,
+            &ProfileId::new("331655283").unwrap(),
+            "game-1849811906-100.sav",
+        )
+        .is_err());
+        assert!(save_for_companion_filename(
+            &saves,
+            &ProfileId::new("331655283").unwrap(),
+            "../game-331655283-100.sav",
+        )
+        .is_err());
     }
 
     #[test]

@@ -117,6 +117,7 @@ mod tests {
             profile_id: ProfileId::new("1849811906").unwrap(),
             session_id: Uuid::nil(),
             sequence: 1,
+            save_file: None,
             event,
         }
     }

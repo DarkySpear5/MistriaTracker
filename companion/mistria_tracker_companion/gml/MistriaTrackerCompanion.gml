@@ -9,7 +9,6 @@ function mistria_tracker_companion_boot() {
         sequence: 0,
         session_id: mistria_tracker_companion_session_id(),
         profile_id: undefined,
-        announced_profile_id: undefined,
         pending_gift: undefined,
     };
 
@@ -33,15 +32,8 @@ function mistria_tracker_companion_profile_id() {
     // `game.room_changed` also fires while the title screen is loading, before
     // the Game object has a save path. Stay completely inactive until a save
     // has been selected; this reads only the in-memory path once it exists.
-    var _path = undefined;
-    try {
-        _path = Game.last_serde_path;
-    } catch (_error) {
-        return undefined;
-    }
-    if (_path == undefined) return undefined;
-
-    var _basename = filename_name(_path);
+    var _basename = mistria_tracker_companion_save_file();
+    if (_basename == undefined) return undefined;
     var _prefix = "game-";
     var _start = string_pos(_prefix, _basename);
     if (_start != 1) return undefined;
@@ -58,7 +50,18 @@ function mistria_tracker_companion_profile_id() {
     return _profile_id;
 }
 
-function mistria_tracker_companion_emit(_type, _payload) {
+function mistria_tracker_companion_save_file() {
+    var _path = undefined;
+    try {
+        _path = Game.last_serde_path;
+    } catch (_error) {
+        return undefined;
+    }
+    if (_path == undefined) return undefined;
+    return filename_name(_path);
+}
+
+function mistria_tracker_companion_emit(_type, _payload, _save_file) {
     var _profile_id = mistria_tracker_companion_profile_id();
     if (_profile_id == undefined) return;
 
@@ -74,6 +77,7 @@ function mistria_tracker_companion_emit(_type, _payload) {
         type: _type,
     };
     if (_payload != undefined) _event.payload = _payload;
+    if (_save_file != undefined) _event.save_file = _save_file;
 
     mmapi_log_info("mistria_tracker_companion", "MISTRIA_TRACKER_EVENT|" + json_stringify(_event));
     mmapi_log_flush("mistria_tracker_companion");
@@ -86,7 +90,7 @@ function mistria_tracker_companion_items_give(_value, _ctx) {
         mistria_tracker_companion_emit("item_obtained", {
             item_id: item_id_to_string(_value.item_id),
             count: _value.count,
-        });
+        }, undefined);
     } catch (_error) { }
     return undefined;
 }
@@ -118,23 +122,22 @@ function mistria_tracker_companion_emit_pending_gift() {
         npc_id: _recorded.npc_id,
         item_id: _recorded.item_id,
         reaction: _recorded.reaction,
-    });
+    }, undefined);
 }
 
 function mistria_tracker_companion_museum_donate_item(_ctx) {
     if (_ctx == undefined || mistria_tracker_companion_profile_id() == undefined) return;
     mistria_tracker_companion_emit("museum_donated", {
         item_id: item_id_to_string(_ctx.item_id),
-    });
+    }, undefined);
 }
 
 function mistria_tracker_companion_room_changed(_ctx) {
     var _profile_id = mistria_tracker_companion_profile_id();
     if (_profile_id == undefined) return;
-    if (global.mistria_tracker_companion_runtime.announced_profile_id == _profile_id) return;
-
-    global.mistria_tracker_companion_runtime.announced_profile_id = _profile_id;
-    mistria_tracker_companion_emit("profile_activated", undefined);
+    var _save_file = mistria_tracker_companion_save_file();
+    if (_save_file == undefined) return;
+    mistria_tracker_companion_emit("profile_activated", undefined, _save_file);
 }
 
 mistria_tracker_companion_boot();

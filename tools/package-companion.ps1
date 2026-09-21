@@ -8,6 +8,8 @@ if (-not (Test-Path -LiteralPath (Join-Path $source 'gml\MistriaTrackerCompanion
 if (Test-Path -LiteralPath (Join-Path $root 'dist-companion')) { Remove-Item -LiteralPath (Join-Path $root 'dist-companion') -Recurse -Force }
 if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
 New-Item -ItemType Directory -Path $stage -Force | Out-Null
-Copy-Item -LiteralPath (Join-Path $source '*') -Destination $stage -Recurse
-Compress-Archive -LiteralPath (Join-Path $stage '*') -DestinationPath $zip -CompressionLevel Optimal
+Get-ChildItem -LiteralPath $source | ForEach-Object {
+    Copy-Item -LiteralPath $_.FullName -Destination $stage -Recurse
+}
+Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip -CompressionLevel Optimal
 Write-Host "Created $zip"

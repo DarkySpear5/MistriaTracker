@@ -381,12 +381,37 @@ describe('passive companion safety boundary', () => {
   it('does not derive a profile identifier until a loaded save path is available', () => {
     const gml = readFileSync(COMPANION_GML, 'utf8');
     const profile = extractFunction(gml, 'mistria_tracker_companion_profile_id');
+    const saveFile = extractFunction(gml, 'mistria_tracker_companion_save_file');
 
-    expect(profile).toMatch(/var _path = undefined;/);
-    expect(profile).toMatch(/try\s*\{\s*_path = Game\.last_serde_path;/);
-    expect(profile).toMatch(/if \(_path == undefined\) return undefined;/);
-    expect(profile.indexOf('if (_path == undefined) return undefined;'))
-      .toBeLessThan(profile.indexOf('filename_name(_path)'));
+    expect(profile).toContain('mistria_tracker_companion_save_file()');
+    expect(saveFile).toMatch(/var _path = undefined;/);
+    expect(saveFile).toMatch(/try\s*\{\s*_path = Game\.last_serde_path;/);
+    expect(saveFile).toMatch(/if \(_path == undefined\) return undefined;/);
+    expect(saveFile.indexOf('if (_path == undefined) return undefined;'))
+      .toBeLessThan(saveFile.indexOf('filename_name(_path)'));
+  });
+
+  it('reannounces the loaded profile on every room change so a late-starting tracker can sync', () => {
+    const gml = readFileSync(COMPANION_GML, 'utf8');
+    const room = extractFunction(gml, 'mistria_tracker_companion_room_changed');
+
+    expect(room).not.toContain('announced_profile_id');
+    expect(room).toContain(
+      'mistria_tracker_companion_emit("profile_activated", undefined, _save_file);',
+    );
+  });
+
+  it('reports only the active save basename with each profile activation', () => {
+    const gml = readFileSync(COMPANION_GML, 'utf8');
+    const saveFile = extractFunction(gml, 'mistria_tracker_companion_save_file');
+    const room = extractFunction(gml, 'mistria_tracker_companion_room_changed');
+
+    expect(saveFile).toContain('Game.last_serde_path');
+    expect(saveFile).toContain('filename_name(_path)');
+    expect(room).toContain('mistria_tracker_companion_save_file()');
+    expect(room).toContain(
+      'mistria_tracker_companion_emit("profile_activated", undefined, _save_file);',
+    );
   });
 
   it('uses only a timer-derived UUID-shaped session identifier', () => {

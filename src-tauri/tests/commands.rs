@@ -1,9 +1,11 @@
 use mistria_tracker_lib::{
     app_state::{TrackerPreferences, TrackerState},
     commands::{
-        import_selected_save_value, preferences_value, profile_summary, save_game_directory_value,
+        import_confirmed_live_save_value, import_selected_save_value, preferences_value,
+        profile_summary, save_game_directory_value,
     },
-    domain::{Language, SpoilerMode},
+    compatibility::CompatibilityMatrix,
+    domain::{Language, ProfileId, SpoilerMode},
     localization::LanguagePreference,
 };
 use std::{fs, io::Write};
@@ -89,6 +91,38 @@ fn selected_save_import_only_reads_the_explicit_copy_and_reports_its_item_count(
         state.active_profile().unwrap().unwrap().as_str(),
         "1849811906"
     );
+}
+
+#[test]
+#[ignore = "requires MISTRIA_TRACKER_SAVES_DIR and MISTRIA_TRACKER_PROFILE_ID"]
+fn installed_1_0_5_save_parses_only_from_a_stable_tracker_owned_snapshot() {
+    let saves = std::env::var_os("MISTRIA_TRACKER_SAVES_DIR")
+        .map(std::path::PathBuf::from)
+        .expect("MISTRIA_TRACKER_SAVES_DIR is required");
+    let profile = std::env::var("MISTRIA_TRACKER_PROFILE_ID")
+        .expect("MISTRIA_TRACKER_PROFILE_ID is required");
+    let profile = ProfileId::new(profile).expect("profile id must be numeric");
+    let tracker_data = tempdir().unwrap();
+    let state = TrackerState::open(tracker_data.path()).unwrap();
+
+    let report = import_confirmed_live_save_value(
+        &state,
+        &profile,
+        None,
+        &saves,
+        tracker_data.path(),
+        &CompatibilityMatrix::embedded().unwrap(),
+    )
+    .unwrap()
+    .expect("the confirmed profile must have a save");
+
+    assert_eq!(report["status"], "imported");
+    assert_eq!(report["profile_id"], profile.as_str());
+    assert!(report["discovered_items"].as_u64().unwrap_or_default() > 0);
+    let snapshots = tracker_data
+        .path()
+        .join("MistriaTracker/backups/game-saves");
+    assert_eq!(fs::read_dir(snapshots).unwrap().count(), 0);
 }
 
 fn v1_0_4_vault() -> Vec<u8> {

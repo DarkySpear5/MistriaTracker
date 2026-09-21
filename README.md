@@ -17,11 +17,11 @@ The desktop tracker and the game companion are separate:
    an unusual Steam location, choose the *Fields of Mistria game folder* (the
    folder containing `assets.zip`), not its `mods` folder.
 4. Start Fields of Mistria through AIM or MOMI, then open Mistria Tracker.
-5. Open Settings and choose **Load save file** to import existing discoveries.
-   Select the `.sav` file you want; the original is read-only and is never
-   modified. With AIM/MOMI and the companion installed, the tracker also begins
-   tracking new discoveries automatically while you play. After loading a save
-   for the first time, change rooms once to start the companion log.
+5. Load your character and change rooms once. The companion reports only the
+   active save filename, and Tracker loads that exact character's name, farm,
+   and approved existing discoveries from a temporary read-only copy. It then
+   tracks new discoveries automatically while you play. If automatic detection
+   is unavailable, Settings > **Load save file** remains a manual fallback.
 
 Save import is intentionally fail-closed: if the selected game version is not
 approved yet, Tracker reports that clearly and leaves both the save and tracker
@@ -31,9 +31,10 @@ Tracker finds Fields of Mistria automatically in normal Steam libraries. If it
 cannot, open Settings and choose the game folder that contains `assets.zip`.
 Tracker does not change game files or saves.
 
-MOMI is only needed for live tracking. Without it, Mistria Tracker can still
-import a supported save through Settings > **Load save file** and show its
-local tracker data. The tracker never edits a Fields of Mistria save file.
+AIM or MOMI is only needed for automatic active-save detection and live
+tracking. Without either one, Mistria Tracker can still import a supported save
+through Settings > **Load save file** and show its local tracker data. The
+tracker never edits a Fields of Mistria save file.
 See the [complete MOMI installation and troubleshooting guide](docs/MOMI_INSTALL_GUIDE.md)
 if nothing appears.
 
