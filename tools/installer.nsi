@@ -1,26 +1,37 @@
 Unicode true
 !include "Sections.nsh"
+!include "StrFunc.nsh"
+
+${StrRep}
 
 Name "Mistria Tracker"
 Icon "..\src-tauri\icons\icon.ico"
 UninstallIcon "..\src-tauri\icons\icon.ico"
-OutFile "installer\\MistriaTracker-0.1.5-setup.exe"
+!ifndef OUTPUT_FILE
+!define OUTPUT_FILE "installer\\MistriaTracker-0.1.5-setup.exe"
+!endif
+OutFile "${OUTPUT_FILE}"
 InstallDir "$LOCALAPPDATA\\Mistria Tracker"
 ; Elevation is needed only when Steam is installed under Program Files and the
 ; optional companion is copied into its verified game mods folder.
-RequestExecutionLevel highest
+; The optional companion is installed into Steam's protected Program Files tree.
+; Request elevation up front so the installer can copy it reliably instead of
+; installing the desktop app and then failing part-way through.
+RequestExecutionLevel admin
 ShowInstDetails show
 ShowUnInstDetails show
 
 Var GameDirectory
 Var CompanionTarget
-Var CompanionWriteHandle
 
 ; Check only known Steam locations. This never scans folders recursively and a
 ; candidate is accepted only if it contains Fields of Mistria's assets.zip.
 Function FindGameDirectory
   StrCpy $GameDirectory ""
   ReadRegStr $R0 HKCU "Software\\Valve\\Steam" "SteamPath"
+  ; Steam commonly stores this value with forward slashes. Normalize it before
+  ; appending Windows paths so NSIS receives one canonical destination format.
+  ${StrRep} $R0 $R0 "/" "\\"
   IfFileExists "$R0\\steamapps\\common\\Fields of Mistria\\assets.zip" steam_root_found
 
   ; Check the common Steam and SteamLibrary folders on mounted C: through Z:
@@ -85,29 +96,18 @@ Section /o "Live tracking companion (AIM/MOMI, recommended)" SecCompanion
 
   companion_install:
   StrCpy $CompanionTarget "$GameDirectory\\mods\\MistriaTrackerCompanion"
-  ; Preflight the exact destination without touching unrelated mod files.
+  ; Prepare the exact destination without touching unrelated mod files.
+  ClearErrors
   CreateDirectory "$CompanionTarget"
-  IfErrors companion_failed
-  FileOpen $CompanionWriteHandle "$CompanionTarget\\.mistria-tracker-write-test" w
-  IfErrors companion_failed
-  FileWrite $CompanionWriteHandle "Mistria Tracker companion write test"
-  IfErrors companion_failed
-  FileClose $CompanionWriteHandle
-  IfErrors companion_failed
-  Delete "$CompanionTarget\\.mistria-tracker-write-test"
 
-  ; Stage the two required runtime files in the installer temp directory, then
-  ; copy them into the validated game folder. This avoids NSIS's retry dialog
-  ; for a protected destination and lets us report one clear failure.
-  SetOutPath "$PLUGINSDIR\\MistriaTrackerCompanion"
+  ; Extract the two required runtime files directly into the validated game
+  ; folder. The installer is elevated, so this also works for Steam installs
+  ; under Program Files without a second copy operation or path translation.
+  SetOverwrite on
+  SetOutPath "$CompanionTarget"
   File "..\\companion\\mistria_tracker_companion\\manifest.json"
-  SetOutPath "$PLUGINSDIR\\MistriaTrackerCompanion\\gml"
+  SetOutPath "$CompanionTarget\\gml"
   File "..\\companion\\mistria_tracker_companion\\gml\\MistriaTrackerCompanion.gml"
-  CopyFiles /SILENT "$PLUGINSDIR\\MistriaTrackerCompanion\\manifest.json" "$CompanionTarget"
-  IfErrors companion_failed
-  CreateDirectory "$CompanionTarget\\gml"
-  CopyFiles /SILENT "$PLUGINSDIR\\MistriaTrackerCompanion\\gml\\MistriaTrackerCompanion.gml" "$CompanionTarget\\gml"
-  IfErrors companion_failed
   IfFileExists "$CompanionTarget\\manifest.json" companion_manifest_ok companion_failed
   companion_manifest_ok:
   IfFileExists "$CompanionTarget\\gml\\MistriaTrackerCompanion.gml" companion_installed companion_failed

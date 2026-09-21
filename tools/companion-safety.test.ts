@@ -173,11 +173,12 @@ describe('passive companion safety boundary', () => {
     const directoryPage = installer.indexOf('Page directory');
     expect(componentsPage, 'expected an installer components-choice page').toBeGreaterThanOrEqual(0);
     expect(componentsPage, 'expected the components-choice page before the destination page').toBeLessThan(directoryPage);
-    expect(installer).toContain('RequestExecutionLevel highest');
+    expect(installer).toContain('RequestExecutionLevel admin');
     expect(installer).toContain('Section /o "Live tracking companion (AIM/MOMI, recommended)"');
     expect(installer).toContain('Section /o "Add a desktop shortcut"');
     expect(installer).toContain('CreateShortcut "$DESKTOP\\\\Mistria Tracker.lnk" "$INSTDIR\\\\mistria-tracker.exe"');
     expect(installer).toContain('IfFileExists "$GameDirectory\\\\assets.zip"');
+    expect(installer).toContain('${StrRep} $R0 $R0 "/" "\\\\"');
     expect(installer).toContain('StrCpy $CompanionTarget "$GameDirectory\\\\mods\\\\MistriaTrackerCompanion"');
     expect(installer).toMatch(/File .*mistria_tracker_companion.*manifest\.json/);
     expect(installer).toMatch(/File .*mistria_tracker_companion.*MistriaTrackerCompanion\.gml/);
