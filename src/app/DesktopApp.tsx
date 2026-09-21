@@ -4,11 +4,10 @@ import { join, localDataDir } from "@tauri-apps/api/path";
 import {
   getPreferences,
   getProfileSummary,
-  importLatestDesktopBackup,
+  chooseAndImportSave,
   isNativeTrackerRuntime,
   pollLiveTracking,
   probeReadiness,
-  reconcileActiveLiveSave,
   resolveGameDirectory,
   savePreferences,
   startLiveTracking,
@@ -44,8 +43,7 @@ type Props = {
   language?: Language;
   nativeRuntime?: () => boolean;
   readinessProbe?: typeof probeReadiness;
-  importExisting?: typeof importLatestDesktopBackup;
-  reconcileLiveSave?: typeof reconcileActiveLiveSave;
+  importExisting?: typeof chooseAndImportSave;
   resolveGameDirectory?: typeof resolveGameDirectory;
   chooseGameDirectory?: typeof chooseAndSaveGameDirectory;
   initialJournal?: Journal;
@@ -55,8 +53,7 @@ export function DesktopApp({
   language: initialLanguage = "eng",
   nativeRuntime = isNativeTrackerRuntime,
   readinessProbe = probeReadiness,
-  importExisting = importLatestDesktopBackup,
-  reconcileLiveSave = reconcileActiveLiveSave,
+  importExisting = chooseAndImportSave,
   resolveGameDirectory: resolveGameDirectoryForApp = resolveGameDirectory,
   chooseGameDirectory = chooseAndSaveGameDirectory,
   initialJournal,
@@ -79,6 +76,7 @@ export function DesktopApp({
   const [busy, setBusy] = useState(native && !initialJournal);
   const [status, setStatus] = useState("waiting");
   const [error, setError] = useState("");
+  const [saveImportMessage, setSaveImportMessage] = useState("");
   const [profileKey, setProfileKey] = useState("");
   const [gameDirectory, setGameDirectory] = useState<string | null>(null);
   const activeProfileRef = useRef("");
@@ -106,7 +104,6 @@ export function DesktopApp({
     let initializing = false;
     let modDataDirectory = "";
     let retryTicks = 0;
-    let reconcileTicks = 0;
     const start = async (selectedGameDirectory?: string) => {
       if (initializing || !alive) return;
       initializing = true;
@@ -136,25 +133,12 @@ export function DesktopApp({
         modDataDirectory = modData;
         if (!alive) return;
         if (report.catalog_approved) {
-          let liveImported = false;
           if (report.companion_log_found && !sessionStarted.current) {
             await startLiveTracking(resolvedGameDirectory, modData);
             sessionStarted.current = true;
-            try {
-              liveImported = (await reconcileLiveSave(modData)) !== null;
-            } catch {
-              liveImported = false;
-            }
           } else if (!sessionStarted.current)
             await invoke("prepare_journal", { gameDirectory: resolvedGameDirectory });
           setStatus(report.companion_log_found ? "tracking" : "waiting");
-          if (!liveImported) {
-            try {
-              await importExisting();
-            } catch {
-              setError("import");
-            }
-          }
           await refresh();
         } else {
           setStatus("offline");
@@ -201,13 +185,6 @@ export function DesktopApp({
               (profiles.active_profile ?? "") !== activeProfileRef.current
             )
               await refresh();
-          }
-          if (++reconcileTicks >= 10 && modDataDirectory) {
-            reconcileTicks = 0;
-            const imported = await reconcileLiveSave(modDataDirectory).catch(
-              () => null,
-            );
-            if (imported && alive) await refresh();
           }
         })
         .catch(() => alive && setStatus("offline"))
@@ -530,21 +507,47 @@ export function DesktopApp({
                     </div>
                   </div>
                   <div className="settings-card">
-                    <h2>{tr(language, status)}</h2>
+                    <h2>{tr(language, "existingDiscoveries")}</h2>
                     <p>{tr(language, "importHelp")}</p>
                     <button
                       className="secondary-button"
                       disabled={busy || !native}
                       onClick={() => {
                         setBusy(true);
+                        setSaveImportMessage("");
                         void importExisting()
-                          .then(refresh)
+                          .then(async (result) => {
+                            if (!result) return;
+                            if (result.status === "unsupported_version") {
+                              setSaveImportMessage(
+                                language === "fra"
+                                  ? `La version ${result.game_version ?? ""} n’est pas encore approuvée pour l’import des sauvegardes.`
+                                  : `Save version ${result.game_version ?? ""} is not approved for import yet.`,
+                              );
+                              return;
+                            }
+                            setSaveImportMessage(
+                              language === "fra"
+                                ? result.imported
+                                  ? `${result.discovered_items} découvertes importées.`
+                                  : `${result.discovered_items} découvertes étaient déjà importées.`
+                                : result.imported
+                                  ? `${result.discovered_items} discoveries imported.`
+                                  : `${result.discovered_items} discoveries were already imported.`,
+                            );
+                            await refresh();
+                          })
                           .catch(() => setError("import"))
                           .finally(() => setBusy(false));
                       }}
                     >
                       {tr(language, "import")}
                     </button>
+                    {saveImportMessage && (
+                      <p className="muted-copy" aria-live="polite">
+                        {saveImportMessage}
+                      </p>
+                    )}
                   </div>
                   {!gameDirectory && native && (
                     <div className="settings-card">

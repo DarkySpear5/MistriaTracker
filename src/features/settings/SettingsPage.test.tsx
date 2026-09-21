@@ -51,7 +51,7 @@ describe('SettingsPage', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('offers an explicit backup-only import for existing discoveries', () => {
+  it('offers an explicit save-file picker for existing discoveries', () => {
     const onImportExisting = vi.fn();
     render(
       <SettingsPage
@@ -62,7 +62,9 @@ describe('SettingsPage', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Import existing discoveries' }));
+    expect(screen.getByText(/selected save file is read-only/i)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Load save file' }));
     expect(onImportExisting).toHaveBeenCalledOnce();
+    expect(screen.queryByText(/Mistria Save Backups/i)).not.toBeInTheDocument();
   });
 });

@@ -1,37 +1,39 @@
 # Mistria Tracker Roadmap
 
-This roadmap tracks work after the 0.1.4 release candidate. Every stage is
+This roadmap tracks work after the 0.1.4 release. Every stage is
 read-only with respect to Fields of Mistria saves.
 
 ## 1. Security hardening — current priority
 
-Status: the core read limits and installer deletion fix are included in 0.1.4.
+Status: 0.1.5 hardening is in progress on the isolated release branch.
 
-- Bound tracker-owned backup, vault, snapshot, and companion-log reads so a
+- Bound tracker-owned vault, snapshot, and companion-log reads so a
   malformed or unexpectedly large local input cannot exhaust memory.
 - Preserve the existing restrictions: no save writes, process injection,
   gameplay changes, arbitrary command execution, or background network access.
 - Verify Rust tests and perform a focused review before committing this work.
 
-## 2. Reliable live tracking and game discovery — next
+## 2. Reliable save import and live tracking — current
 
-Status: 1.0.5 live-event compatibility, active-profile preservation, and
-validated Steam discovery are included in 0.1.4. Manual game testing remains
-the next reliability checkpoint.
+Status: 0.1.5 removes automatic save-path guessing and adds an explicit,
+read-only `.sav` picker. Live tracking remains event-only through the
+companion log. Fields of Mistria 1.0.5 save import stays disabled until a
+disposable-save parser probe is approved.
 
-- Replace the hard-coded default Steam path with validated Steam-library
-  discovery, bounded drive-root fallback, and one manual folder choice.
+- Keep validated Steam-library discovery, bounded drive-root fallback, and one
+  manual folder choice.
 - Keep the Tracker paused rather than guessing when the game cannot be found.
-- Make active-save detection robust: use only the current companion event log,
+- Make active-profile detection robust: use only the current companion event log,
   handle a fresh profile after a room change, and prevent two installed
   Tracker-companion versions from competing for the same MMAPI identifier.
+- Let the user choose a save from any accessible drive without opening or
+  changing the original file; parse only a bounded tracker-owned snapshot.
 - Test default Steam, a secondary drive, stale paths, missing logs, and a
   profile switch without opening or changing a game save.
 
 ## 3. Unified language support
 
-Status: design already approved; implementation begins after stage 2 supplies
-the validated Steam library boundary.
+Status: design approved; implementation follows the 0.1.5 reliability patch.
 
 - One language choice only: **Auto-detect** or one manual language.
 - The choice controls both Tracker controls and extracted game catalog text.
@@ -63,9 +65,9 @@ Status: future product design after the reliability work.
 
 ## 6. Beginner-friendly installer
 
-Status: the first safe automatic Steam-location check, manual fallback, and
-desktop-shortcut choice are included in 0.1.4. Broader installer improvements
-stay on the roadmap.
+Status: 0.1.5 adds a validated companion destination, write preflight,
+required-file verification, and a clear failure message instead of an NSIS
+retry prompt. Linux/SteamOS packaging remains separate work.
 
 - Detect the validated game/mods folder automatically and offer the companion
   as a clearly labelled recommended live-tracking component.

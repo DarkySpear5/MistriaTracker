@@ -4,7 +4,7 @@ Unicode true
 Name "Mistria Tracker"
 Icon "..\src-tauri\icons\icon.ico"
 UninstallIcon "..\src-tauri\icons\icon.ico"
-OutFile "installer\\MistriaTracker-0.1.4-setup.exe"
+OutFile "installer\\MistriaTracker-0.1.5-setup.exe"
 InstallDir "$LOCALAPPDATA\\Mistria Tracker"
 ; Elevation is needed only when Steam is installed under Program Files and the
 ; optional companion is copied into its verified game mods folder.
@@ -13,6 +13,8 @@ ShowInstDetails show
 ShowUnInstDetails show
 
 Var GameDirectory
+Var CompanionTarget
+Var CompanionWriteHandle
 
 ; Check only known Steam locations. This never scans folders recursively and a
 ; candidate is accepted only if it contains Fields of Mistria's assets.zip.
@@ -82,14 +84,39 @@ Section /o "Live tracking companion (AIM/MOMI, recommended)" SecCompanion
   Goto companion_skipped
 
   companion_install:
-  ; Remove only the two known files from the old 0.1.0 folder. Never recurse
-  ; through a user-selected folder or remove unrelated mod files.
-  Delete "$GameDirectory\\mods\\mistria_tracker_companion\\manifest.json"
-  Delete "$GameDirectory\\mods\\mistria_tracker_companion\\gml\\MistriaTrackerCompanion.gml"
-  RMDir "$GameDirectory\\mods\\mistria_tracker_companion\\gml"
-  RMDir "$GameDirectory\\mods\\mistria_tracker_companion"
-  SetOutPath "$GameDirectory\\mods\\MistriaTrackerCompanion"
-  File /r "..\companion\mistria_tracker_companion\*.*"
+  StrCpy $CompanionTarget "$GameDirectory\\mods\\MistriaTrackerCompanion"
+  ; Preflight the exact destination without touching unrelated mod files.
+  CreateDirectory "$CompanionTarget"
+  IfErrors companion_failed
+  FileOpen $CompanionWriteHandle "$CompanionTarget\\.mistria-tracker-write-test" w
+  IfErrors companion_failed
+  FileWrite $CompanionWriteHandle "Mistria Tracker companion write test"
+  IfErrors companion_failed
+  FileClose $CompanionWriteHandle
+  IfErrors companion_failed
+  Delete "$CompanionTarget\\.mistria-tracker-write-test"
+
+  ; Stage the two required runtime files in the installer temp directory, then
+  ; copy them into the validated game folder. This avoids NSIS's retry dialog
+  ; for a protected destination and lets us report one clear failure.
+  SetOutPath "$PLUGINSDIR\\MistriaTrackerCompanion"
+  File "..\\companion\\mistria_tracker_companion\\manifest.json"
+  SetOutPath "$PLUGINSDIR\\MistriaTrackerCompanion\\gml"
+  File "..\\companion\\mistria_tracker_companion\\gml\\MistriaTrackerCompanion.gml"
+  CopyFiles /SILENT "$PLUGINSDIR\\MistriaTrackerCompanion\\manifest.json" "$CompanionTarget"
+  IfErrors companion_failed
+  CreateDirectory "$CompanionTarget\\gml"
+  CopyFiles /SILENT "$PLUGINSDIR\\MistriaTrackerCompanion\\gml\\MistriaTrackerCompanion.gml" "$CompanionTarget\\gml"
+  IfErrors companion_failed
+  IfFileExists "$CompanionTarget\\manifest.json" companion_manifest_ok companion_failed
+  companion_manifest_ok:
+  IfFileExists "$CompanionTarget\\gml\\MistriaTrackerCompanion.gml" companion_installed companion_failed
+
+  companion_installed:
+  Goto companion_skipped
+
+  companion_failed:
+  MessageBox MB_ICONEXCLAMATION "The Tracker app was installed, but the optional companion could not be copied to:$\r$\n$CompanionTarget$\r$\n$\r$\nCheck that Fields of Mistria is closed and that you have permission to write to this folder, then run setup again as administrator."
 
   companion_skipped:
 SectionEnd

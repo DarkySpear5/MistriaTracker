@@ -4,6 +4,7 @@ import {
   getActiveSnapshot,
   getPreferences,
   getProfileSummary,
+  importSelectedSave,
   probeReadiness,
   readItemNote,
   resolveGameDirectory,
@@ -93,5 +94,22 @@ describe('native tracker bridge', () => {
 
     await expect(resolveGameDirectory()).resolves.toBe('D:/Games/Fields of Mistria');
     expect(invoke).toHaveBeenCalledWith('resolve_game_directory');
+  });
+
+  it('passes only the user-selected save path to native import', async () => {
+    vi.mocked(invoke).mockResolvedValueOnce({
+      profile_id: '1849811906',
+      discovered_items: 2,
+      imported: true,
+    });
+
+    await expect(importSelectedSave('D:/Saves/Ari-game-1849811906-1.sav')).resolves.toEqual({
+      profile_id: '1849811906',
+      discovered_items: 2,
+      imported: true,
+    });
+    expect(invoke).toHaveBeenCalledWith('import_selected_save', {
+      savePath: 'D:/Saves/Ari-game-1849811906-1.sav',
+    });
   });
 });

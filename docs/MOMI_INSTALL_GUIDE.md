@@ -14,15 +14,18 @@ replace game values.
 
 ## Install the desktop app
 
-1. Run `MistriaTracker-0.1.4-setup.exe` and install it normally. The
+1. Run `MistriaTracker-0.1.5-setup.exe` and install it normally. The
    **Add a desktop shortcut** choice is selected by default; untick it if you
    do not want one.
 2. To use live tracking, leave **Live tracking companion (AIM/MOMI,
    recommended)** selected. Setup finds normal Steam installs automatically.
    If it cannot, select the *game folder containing `assets.zip`*—not the
    `mods` folder.
-3. Launch **Mistria Tracker**. It automatically loads existing discoveries
-   when it opens.
+3. Launch **Mistria Tracker**, open Settings, and choose **Load save file**.
+   Select a `.sav` file. Tracker reads a temporary copy and never changes the
+   original save. If the save's game version is not approved for import yet,
+   Tracker reports that without changing the save or creating tracker
+   discoveries.
 4. Keep only one tracker window open. A second launch focuses the existing
    window.
 
@@ -48,13 +51,14 @@ replace game values.
 
 ## If the tracker finds nothing
 
-Existing discoveries load automatically when the tracker opens. If new
+If existing discoveries do not appear after choosing a save file, or if new
 discoveries are not appearing while you play:
 
 1. Make sure MOMI is installed, then start Fields of Mistria through MOMI.
 2. Close and reopen both the game and Mistria Tracker.
-3. In Mistria Tracker Settings, look at the live-tracking status. It is
-   informational only; there is nothing to refresh or approve manually.
+3. In Mistria Tracker Settings, choose **Load save file** for existing data,
+   then look at the live-tracking status for new events. It is informational
+   only; there is nothing to approve manually.
 4. If the companion was skipped during setup, run the installer again and
    select **Live tracking companion (AIM/MOMI, recommended)**.
 

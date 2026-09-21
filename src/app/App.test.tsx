@@ -89,17 +89,13 @@ describe("Desktop journal", () => {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(1500);
       });
-      expect(
-        screen.getByRole("heading", { name: "Tracking unavailable" }),
-      ).toBeVisible();
+      expect(screen.getByTitle("Tracking unavailable")).toBeVisible();
       offline = false;
       active = "amelia";
       await act(async () => {
         await vi.advanceTimersByTimeAsync(1500);
       });
-      expect(
-        screen.getByRole("heading", { name: "Live tracking ready" }),
-      ).toBeVisible();
+      expect(screen.getByTitle("Live tracking ready")).toBeVisible();
       expect(screen.getByText("Amelia")).toBeVisible();
     } finally {
       vi.useRealTimers();
@@ -146,9 +142,7 @@ describe("Desktop journal", () => {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(30000);
       });
-      expect(
-        screen.getByRole("heading", { name: "Live tracking ready" }),
-      ).toBeVisible();
+      expect(screen.getByTitle("Live tracking ready")).toBeVisible();
     } finally {
       vi.useRealTimers();
     }
@@ -303,15 +297,14 @@ describe("Desktop journal", () => {
     expect(screen.getByRole("combobox", { name: /Rechercher/ })).toBeVisible();
     expect(screen.getByRole("button", { name: "Villageois" })).toBeVisible();
   });
-  it("imports on startup even before the companion log exists", async () => {
+  it("does not import a save automatically before the companion log exists", async () => {
     let imported = false;
     vi.mocked(invoke).mockImplementation(async (command) => {
       if (command === "get_preferences")
         return { language_preference: "auto", effective_language: "eng", spoiler_mode: "free", hints_enabled: false };
       if (command === "get_profile_summary")
         return { active_profile: "ari", profiles: ["ari"] };
-      if (command === "get_journal_snapshot")
-        return imported ? testJournal : null;
+      if (command === "get_journal_snapshot") return testJournal;
       if (command === "prepare_journal") return;
       throw new Error("Unexpected command " + command);
     });
@@ -336,10 +329,10 @@ describe("Desktop journal", () => {
     expect(
       screen.queryByText("Preparing your journal"),
     ).not.toBeInTheDocument();
+    expect(imported).toBe(false);
   });
 
-  it("uses the companion-confirmed live save before considering the desktop backup", async () => {
-    const backup = vi.fn();
+  it("starts passive companion tracking without opening a game save", async () => {
     vi.mocked(invoke).mockImplementation(async (command) => {
       if (command === "get_preferences")
         return { language_preference: "auto", effective_language: "eng", spoiler_mode: "free", hints_enabled: false };
@@ -358,16 +351,9 @@ describe("Desktop journal", () => {
           catalog_approved: true,
           companion_log_found: true,
         })}
-        importExisting={backup}
-        reconcileLiveSave={async () => ({
-          profile_id: "ari",
-          discovered_items: 2,
-          imported: true,
-        })}
       />,
     );
 
     await waitFor(() => expect(screen.getAllByText("Ari").length).toBeGreaterThan(0));
-    expect(backup).not.toHaveBeenCalled();
   });
 });

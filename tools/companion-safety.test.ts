@@ -178,8 +178,12 @@ describe('passive companion safety boundary', () => {
     expect(installer).toContain('Section /o "Add a desktop shortcut"');
     expect(installer).toContain('CreateShortcut "$DESKTOP\\\\Mistria Tracker.lnk" "$INSTDIR\\\\mistria-tracker.exe"');
     expect(installer).toContain('IfFileExists "$GameDirectory\\\\assets.zip"');
-    expect(installer).toContain('SetOutPath "$GameDirectory\\\\mods\\\\MistriaTrackerCompanion"');
-    expect(installer).toContain('File /r "..\\companion\\mistria_tracker_companion\\*.*"');
+    expect(installer).toContain('StrCpy $CompanionTarget "$GameDirectory\\\\mods\\\\MistriaTrackerCompanion"');
+    expect(installer).toMatch(/File .*mistria_tracker_companion.*manifest\.json/);
+    expect(installer).toMatch(/File .*mistria_tracker_companion.*MistriaTrackerCompanion\.gml/);
+    expect(installer).toContain('manifest.json');
+    expect(installer).toMatch(/IfFileExists .*manifest\.json/);
+    expect(installer).toMatch(/IfFileExists .*MistriaTrackerCompanion\.gml/);
     expect(installer).not.toContain('RMDir /r');
     expect(installer).not.toContain('.sav');
   });

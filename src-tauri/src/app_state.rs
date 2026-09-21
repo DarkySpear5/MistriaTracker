@@ -44,8 +44,6 @@ pub enum TrackerStateError {
     GamePath(#[from] crate::safety::paths::GameSavePathError),
     #[error(transparent)]
     LogTail(#[from] LogTailError),
-    #[error("no .sav backup was found in a Mistria Save Backups folder")]
-    NoDesktopBackup,
     #[error("the selected Fields of Mistria folder must contain a readable assets.zip file")]
     InvalidGameDirectory,
 }

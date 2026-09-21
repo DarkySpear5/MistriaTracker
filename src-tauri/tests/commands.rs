@@ -1,8 +1,7 @@
 use mistria_tracker_lib::{
     app_state::{TrackerPreferences, TrackerState},
     commands::{
-        import_latest_desktop_backup_value, preferences_value, profile_summary,
-        save_game_directory_value,
+        import_selected_save_value, preferences_value, profile_summary, save_game_directory_value,
     },
     domain::{Language, SpoilerMode},
     localization::LanguagePreference,
@@ -71,17 +70,16 @@ fn save_game_directory_rejects_a_folder_without_assets_zip() {
 }
 
 #[test]
-fn desktop_backup_import_only_reads_the_latest_copy_and_reports_its_item_count() {
+fn selected_save_import_only_reads_the_explicit_copy_and_reports_its_item_count() {
     let directory = tempdir().unwrap();
-    let backup_directory = directory.path().join("Mistria Save Backups");
-    fs::create_dir(&backup_directory).unwrap();
-    let backup = backup_directory.join("Amelia-game-1849811906-1.sav");
-    fs::write(&backup, v1_0_4_vault()).unwrap();
+    let selected = directory.path().join("Amelia-game-1849811906-1.sav");
+    fs::write(&selected, v1_0_4_vault()).unwrap();
     let state = TrackerState::open(directory.path()).unwrap();
 
     assert_eq!(
-        import_latest_desktop_backup_value(&state, &[backup_directory]).unwrap(),
+        import_selected_save_value(&state, &selected, directory.path()).unwrap(),
         serde_json::json!({
+            "status": "imported",
             "profile_id": "1849811906",
             "discovered_items": 2,
             "imported": true,

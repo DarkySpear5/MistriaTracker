@@ -10,25 +10,30 @@ The desktop tracker and the game companion are separate:
 
 1. To track new discoveries while playing, install AIM or MOMI/Mods of Mistria
    with compatible MMAPI hooks first.
-2. Run `MistriaTracker-0.1.4-setup.exe` and install it normally. Tick
+2. Run `MistriaTracker-0.1.5-setup.exe` and install it normally. Tick
    **Add a desktop shortcut** if you want one.
 3. Leave **Live tracking companion (AIM/MOMI, recommended)** selected to
    install live tracking. Setup finds normal Steam installs automatically. On
    an unusual Steam location, choose the *Fields of Mistria game folder* (the
    folder containing `assets.zip`), not its `mods` folder.
 4. Start Fields of Mistria through AIM or MOMI, then open Mistria Tracker.
-5. The tracker automatically loads existing discoveries when it opens. With
-   AIM/MOMI and the companion installed, it also begins tracking new
-   discoveries automatically while you play. After loading a save for the
-   first time, change rooms once to start the companion log.
+5. Open Settings and choose **Load save file** to import existing discoveries.
+   Select the `.sav` file you want; the original is read-only and is never
+   modified. With AIM/MOMI and the companion installed, the tracker also begins
+   tracking new discoveries automatically while you play. After loading a save
+   for the first time, change rooms once to start the companion log.
+
+Save import is intentionally fail-closed: if the selected game version is not
+approved yet, Tracker reports that clearly and leaves both the save and tracker
+database unchanged.
 
 Tracker finds Fields of Mistria automatically in normal Steam libraries. If it
 cannot, open Settings and choose the game folder that contains `assets.zip`.
 Tracker does not change game files or saves.
 
 MOMI is only needed for live tracking. Without it, Mistria Tracker can still
-show discoveries already found from its local tracker data. The tracker never
-edits a Fields of Mistria save file.
+import a supported save through Settings > **Load save file** and show its
+local tracker data. The tracker never edits a Fields of Mistria save file.
 See the [complete MOMI installation and troubleshooting guide](docs/MOMI_INSTALL_GUIDE.md)
 if nothing appears.
 
@@ -136,6 +141,6 @@ in this repository.
 
 Maintainers can build a portable ZIP and its checksum with
 `pnpm package:portable`. It is a developer distribution option and is not part
-of the official 0.1.4 release.
+of the official 0.1.5 release.
 
 End-user setup is documented in [`docs/MOMI_INSTALL_GUIDE.md`](docs/MOMI_INSTALL_GUIDE.md).

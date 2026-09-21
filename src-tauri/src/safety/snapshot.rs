@@ -1,4 +1,4 @@
-use super::paths::GameSavePath;
+use super::paths::{GameSavePath, SelectedSavePath};
 use crate::save::vault::MAX_COMPRESSED_BYTES;
 use sha2::{Digest, Sha256};
 use std::{
@@ -67,26 +67,34 @@ impl SnapshotService {
     }
 
     pub fn snapshot(&self, source: &GameSavePath) -> Result<Snapshot, SnapshotError> {
-        let before = source_fingerprint(source.as_path())?;
+        self.snapshot_path(source.as_path())
+    }
+
+    pub fn snapshot_selected(&self, source: &SelectedSavePath) -> Result<Snapshot, SnapshotError> {
+        self.snapshot_path(source.as_path())
+    }
+
+    fn snapshot_path(&self, source: &Path) -> Result<Snapshot, SnapshotError> {
+        let before = source_fingerprint(source)?;
         if before.length > MAX_COMPRESSED_BYTES as u64 {
             return Err(SnapshotError::SourceTooLarge);
         }
         if !self.stability_window.is_zero() {
             thread::sleep(self.stability_window);
         }
-        if source_fingerprint(source.as_path())? != before {
+        if source_fingerprint(source)? != before {
             return Err(SnapshotError::SourceChanged);
         }
 
         let mut input = OpenOptions::new()
             .read(true)
-            .open(source.as_path())
+            .open(source)
             .map_err(SnapshotError::Read)?;
         let mut temporary =
             NamedTempFile::new_in(&self.backups).map_err(SnapshotError::BackupStorage)?;
         copy_to_snapshot(&mut input, temporary.as_file_mut())?;
 
-        if source_fingerprint(source.as_path())? != before {
+        if source_fingerprint(source)? != before {
             return Err(SnapshotError::SourceChanged);
         }
 
@@ -294,5 +302,20 @@ mod tests {
         fs::create_dir(&fixture.source).unwrap();
         let service = SnapshotService::for_fixture(&fixture.local, Duration::ZERO).unwrap();
         assert!(service.snapshot(&source).is_err());
+    }
+
+    #[test]
+    fn selected_save_snapshot_stays_in_tracker_storage() {
+        let fixture = Fixture::new();
+        let selected = fixture.local.join("copy-from-secondary-drive.sav");
+        fs::copy(&fixture.source, &selected).unwrap();
+        let selected = SelectedSavePath::new(&selected).unwrap();
+        let service = SnapshotService::for_fixture(&fixture.local, Duration::ZERO).unwrap();
+        let snapshot = service.snapshot_selected(&selected).unwrap();
+        assert!(snapshot.path.starts_with(&service.backups));
+        assert_eq!(
+            fs::read(snapshot.path).unwrap(),
+            fs::read(selected.as_path()).unwrap()
+        );
     }
 }

@@ -1,17 +1,16 @@
 use crate::{
     app_state::{TrackerPreferences, TrackerState, TrackerStateError},
     catalog::{cached_item_icon, CatalogCacheDir},
-    compatibility::{CompatibilityMatrix, SaveParserDecision},
-    domain::ProfileId,
-    live_save::{
-        active_profile_from_log, game_is_running, newest_save_for_profile, ActiveCompanionProfile,
-    },
+    compatibility::CompatibilityMatrix,
     persistence::ImportResult,
-    safety::paths::CompanionLogPath,
     safety::paths::GameAssetsPath,
+    safety::paths::{CompanionLogPath, SelectedSavePath},
     safety::snapshot::SnapshotService,
-    save::backup::{discoveries_from_bytes, existing_discoveries},
-    save::evidence::SAVE_PARSER_VERSION,
+    save::{
+        backup::{discoveries_from_bytes, profile_id_from_save_filename},
+        evidence::{EvidenceExtractor, SAVE_PARSER_VERSION},
+        vault::VaultReader,
+    },
     tracking::PassiveTrackingSession,
 };
 use base64::{engine::general_purpose::STANDARD, Engine};
@@ -237,67 +236,76 @@ pub fn poll_live_tracking_value(
         .len())
 }
 
-pub fn import_latest_desktop_backup_value(
+/// Imports one save file explicitly selected by the player. The original is
+/// canonicalized and read only; parsing happens only against a temporary copy
+/// owned by the tracker.
+pub fn import_selected_save_value(
     state: &TrackerState,
-    backup_directories: &[PathBuf],
+    save_path: &std::path::Path,
+    tracker_local_data: &std::path::Path,
 ) -> Result<Value, TrackerStateError> {
-    let backup = latest_backup(backup_directories)?;
-    let compatibility =
-        CompatibilityMatrix::embedded().map_err(crate::persistence::RepoError::from)?;
-    let discoveries = existing_discoveries(&backup, &compatibility).map_err(|error| {
+    let selected = SelectedSavePath::new(save_path)?;
+    let profile_id = profile_id_from_save_filename(selected.as_path()).map_err(|error| {
         TrackerStateError::Repository(crate::persistence::RepoError::Io(std::io::Error::other(
             error.to_string(),
         )))
     })?;
-    let imported = state.import_existing_items(
-        discoveries.source_hash,
-        &discoveries.profile_id,
-        &discoveries.game_version,
-        &discoveries.items,
-    )?;
-    state.store_journal_evidence(&discoveries.profile_id, &discoveries.journal)?;
-    Ok(json!({
-        "profile_id": discoveries.profile_id.as_str(),
-        "discovered_items": discoveries.items.len(),
-        "imported": matches!(imported, ImportResult::Inserted),
-    }))
-}
-
-/// Reconciles a running game's exact companion-selected profile through a
-/// stable tracker-owned snapshot. This never opens another profile's save and
-/// never writes to the game directory.
-fn import_live_save_for_profile_value(
-    state: &TrackerState,
-    saves_directory: &std::path::Path,
-    tracker_local_data: &std::path::Path,
-    profile_id: &ProfileId,
-    compatibility: &CompatibilityMatrix,
-) -> Result<Option<Value>, TrackerStateError> {
-    let Some(save) = newest_save_for_profile(saves_directory, profile_id).map_err(|error| {
-        TrackerStateError::Repository(crate::persistence::RepoError::Io(std::io::Error::other(
-            error.to_string(),
-        )))
-    })?
-    else {
-        return Ok(None);
-    };
+    let compatibility =
+        CompatibilityMatrix::embedded().map_err(crate::persistence::RepoError::from)?;
     let snapshot = SnapshotService::for_local_data(tracker_local_data)
-        .and_then(|service| service.snapshot(&save))
+        .and_then(|service| service.snapshot_selected(&selected))
         .map_err(|error| {
             TrackerStateError::Repository(crate::persistence::RepoError::Io(std::io::Error::other(
                 error.to_string(),
             )))
         })?;
-    let discoveries = (|| {
+    let result = (|| {
         let bytes = std::fs::read(&snapshot.path).map_err(crate::persistence::RepoError::from)?;
-        discoveries_from_bytes(&bytes, profile_id.clone(), compatibility).map_err(|error| {
+        let vault = VaultReader::read(bytes.as_slice()).map_err(|error| {
             TrackerStateError::Repository(crate::persistence::RepoError::Io(std::io::Error::other(
                 error.to_string(),
             )))
-        })
+        })?;
+        let game_version = EvidenceExtractor::game_version(&vault).map_err(|error| {
+            TrackerStateError::Repository(crate::persistence::RepoError::Io(std::io::Error::other(
+                error.to_string(),
+            )))
+        })?;
+        if compatibility.save_parser_decision(&game_version, SAVE_PARSER_VERSION)
+            != crate::compatibility::SaveParserDecision::Verified
+        {
+            return Ok(json!({
+                "status": "unsupported_version",
+                "profile_id": profile_id.as_str(),
+                "game_version": game_version,
+                "discovered_items": 0,
+                "imported": false,
+            }));
+        }
+        let discoveries =
+            discoveries_from_bytes(&bytes, profile_id, &compatibility).map_err(|error| {
+                TrackerStateError::Repository(crate::persistence::RepoError::Io(
+                    std::io::Error::other(error.to_string()),
+                ))
+            })?;
+        let imported = state.import_existing_items(
+            discoveries.source_hash,
+            &discoveries.profile_id,
+            &discoveries.game_version,
+            &discoveries.items,
+        )?;
+        state.store_journal_evidence(&discoveries.profile_id, &discoveries.journal)?;
+        Ok(json!({
+            "status": if matches!(imported, ImportResult::Inserted) {
+                "imported"
+            } else {
+                "already_imported"
+            },
+            "profile_id": discoveries.profile_id.as_str(),
+            "discovered_items": discoveries.items.len(),
+            "imported": matches!(imported, ImportResult::Inserted),
+        }))
     })();
-    // The snapshot exists only to give this parse a stable tracker-owned input.
-    // It contains no new player state and must not accumulate on each poll.
     let cleanup = std::fs::remove_file(&snapshot.path)
         .and_then(|_| std::fs::remove_file(&snapshot.manifest_path));
     if let Err(error) = cleanup {
@@ -305,129 +313,7 @@ fn import_live_save_for_profile_value(
             crate::persistence::RepoError::Io(error),
         ));
     }
-    let discoveries = discoveries?;
-    let imported = state.import_existing_items(
-        discoveries.source_hash,
-        &discoveries.profile_id,
-        &discoveries.game_version,
-        &discoveries.items,
-    )?;
-    state.store_journal_evidence(&discoveries.profile_id, &discoveries.journal)?;
-    Ok(Some(json!({
-        "profile_id": discoveries.profile_id.as_str(),
-        "discovered_items": discoveries.items.len(),
-        "imported": matches!(imported, ImportResult::Inserted),
-    })))
-}
-
-/// Selects the companion-confirmed profile independently of whether the
-/// current game version permits save-data import.
-fn select_confirmed_live_profile(
-    state: &TrackerState,
-    profile_id: &ProfileId,
-) -> Result<(), TrackerStateError> {
-    state.activate_profile(profile_id.as_str())
-}
-
-fn reconcile_confirmed_live_profile_value<F>(
-    state: &TrackerState,
-    active_profile: &ActiveCompanionProfile,
-    compatibility: &CompatibilityMatrix,
-    import_save: F,
-) -> Result<Option<Value>, TrackerStateError>
-where
-    F: FnOnce() -> Result<Option<Value>, TrackerStateError>,
-{
-    select_confirmed_live_profile(state, &active_profile.profile_id)?;
-    if compatibility.save_parser_decision(&active_profile.game_version, SAVE_PARSER_VERSION)
-        != SaveParserDecision::Verified
-    {
-        return Ok(Some(json!({
-            "profile_id": active_profile.profile_id.as_str(),
-            "discovered_items": 0,
-            "imported": false,
-        })));
-    }
-    import_save()
-}
-
-pub fn reconcile_active_live_save_value(
-    state: &TrackerState,
-    mod_data_directory: &str,
-) -> Result<Option<Value>, TrackerStateError> {
-    if !game_is_running() {
-        return Ok(None);
-    }
-    let local = std::env::var_os("LOCALAPPDATA").ok_or_else(|| {
-        TrackerStateError::Repository(crate::persistence::RepoError::Io(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "LOCALAPPDATA is unavailable",
-        )))
-    })?;
-    let local = PathBuf::from(local);
-    let mod_data_directory = PathBuf::from(mod_data_directory);
-    let log = CompanionLogPath::new(
-        &mod_data_directory,
-        &mod_data_directory.join("mistria_tracker_companion/logs/mistria_tracker_companion.log"),
-    )?;
-    let Some(active_profile) = active_profile_from_log(log.as_path()).map_err(|error| {
-        TrackerStateError::Repository(crate::persistence::RepoError::Io(std::io::Error::other(
-            error.to_string(),
-        )))
-    })?
-    else {
-        return Ok(None);
-    };
-    let compatibility =
-        CompatibilityMatrix::embedded().map_err(crate::persistence::RepoError::from)?;
-    reconcile_confirmed_live_profile_value(state, &active_profile, &compatibility, || {
-        import_live_save_for_profile_value(
-            state,
-            &local.join("FieldsOfMistria/saves"),
-            &local,
-            &active_profile.profile_id,
-            &compatibility,
-        )
-    })
-}
-
-fn latest_backup(backup_directories: &[PathBuf]) -> Result<PathBuf, TrackerStateError> {
-    backup_directories
-        .iter()
-        .filter_map(|directory| std::fs::read_dir(directory).ok())
-        .flat_map(|entries| entries.filter_map(Result::ok))
-        .map(|entry| entry.path())
-        .filter(|path| path.extension().and_then(|extension| extension.to_str()) == Some("sav"))
-        .filter_map(|path| {
-            std::fs::metadata(&path)
-                .ok()
-                .filter(|metadata| metadata.is_file())
-                .and_then(|metadata| metadata.modified().ok())
-                .map(|modified| (modified, path))
-        })
-        .max_by_key(|(modified, _)| *modified)
-        .map(|(_, path)| path)
-        .ok_or(TrackerStateError::NoDesktopBackup)
-}
-
-fn desktop_backup_directories(app: &tauri::AppHandle) -> Vec<PathBuf> {
-    let mut roots = app
-        .path()
-        .desktop_dir()
-        .ok()
-        .into_iter()
-        .map(|desktop| desktop.join("Mistria Save Backups"))
-        .collect::<Vec<_>>();
-    if let Some(one_drive) = std::env::var_os("OneDrive") {
-        let one_drive = PathBuf::from(one_drive);
-        roots.extend([
-            one_drive.join("Desktop/Mistria Save Backups"),
-            one_drive.join("Bureau/Mistria Save Backups"),
-        ]);
-    }
-    roots.sort();
-    roots.dedup();
-    roots
+    result
 }
 
 #[cfg(test)]
@@ -438,7 +324,7 @@ mod tests {
         persistence::Repository,
         test_support::{
             catalog::extract_fixture_catalog,
-            vault::{sections, vault_bytes, verified_matrix, Fixture},
+            vault::{vault_bytes, Fixture},
         },
     };
     use std::fs;
@@ -479,31 +365,30 @@ mod tests {
     }
 
     #[test]
-    fn imports_only_a_stable_tracker_snapshot_of_the_companion_selected_live_save() {
+    fn imports_only_a_stable_tracker_snapshot_of_the_explicitly_selected_save() {
         let fixture = Fixture::new();
-        let live_save = fixture.saves.join("game-331655283-42.sav");
-        fs::write(&live_save, vault_bytes(&sections())).unwrap();
-        let before = fs::read(&live_save).unwrap();
-        let modified = fs::metadata(&live_save).unwrap().modified().unwrap();
+        let selected_save = fixture.local.join("Ari-game-331655283-42.sav");
+        fs::write(
+            &selected_save,
+            vault_bytes(&[
+                ("info", serde_json::json!({"version":"1.0.4"})),
+                (
+                    "header",
+                    serde_json::json!({"name":"Ari","farm_name":"Test"}),
+                ),
+                ("player", serde_json::json!({"items_acquired":["test_ore"]})),
+            ]),
+        )
+        .unwrap();
+        let before = fs::read(&selected_save).unwrap();
         let state = TrackerState::from_repository(Repository::in_memory().unwrap());
 
-        let result = import_live_save_for_profile_value(
-            &state,
-            &fixture.saves,
-            &fixture.local,
-            &crate::domain::ProfileId::new("331655283").unwrap(),
-            &verified_matrix(),
-        )
-        .unwrap()
-        .unwrap();
+        let result = import_selected_save_value(&state, &selected_save, &fixture.local).unwrap();
 
         assert_eq!(result["profile_id"], "331655283");
-        assert!(result["discovered_items"].as_u64().unwrap() > 0);
-        assert_eq!(fs::read(&live_save).unwrap(), before);
-        assert_eq!(
-            fs::metadata(&live_save).unwrap().modified().unwrap(),
-            modified
-        );
+        assert_eq!(result["discovered_items"], 1);
+        assert_eq!(result["status"], "imported");
+        assert_eq!(fs::read(&selected_save).unwrap(), before);
         assert_eq!(
             state.active_profile().unwrap().unwrap().as_str(),
             "331655283"
@@ -513,41 +398,37 @@ mod tests {
     }
 
     #[test]
-    fn selects_the_companion_confirmed_profile_before_live_save_import() {
+    fn refuses_unapproved_save_versions_without_writing_tracker_state() {
+        let fixture = Fixture::new();
+        let selected_save = fixture.local.join("Ari-game-331655283-42.sav");
+        fs::write(
+            &selected_save,
+            vault_bytes(&[
+                ("info", serde_json::json!({"version":"1.0.5"})),
+                (
+                    "header",
+                    serde_json::json!({"name":"Ari","farm_name":"Test"}),
+                ),
+            ]),
+        )
+        .unwrap();
         let state = TrackerState::from_repository(Repository::in_memory().unwrap());
-        let profile = ProfileId::new("331655283").unwrap();
-
-        select_confirmed_live_profile(&state, &profile).unwrap();
-
-        assert_eq!(
-            state.active_profile().unwrap().unwrap().as_str(),
-            "331655283"
-        );
+        let report = import_selected_save_value(&state, &selected_save, &fixture.local).unwrap();
+        assert_eq!(report["status"], "unsupported_version");
+        assert_eq!(report["game_version"], "1.0.5");
+        assert!(state.active_profile().unwrap().is_none());
     }
 
     #[test]
-    fn keeps_the_confirmed_profile_when_its_save_parser_is_unapproved() {
+    fn removes_the_tracker_snapshot_when_selected_save_parsing_fails() {
+        let fixture = Fixture::new();
+        let selected_save = fixture.local.join("Ari-game-331655283-42.sav");
+        fs::write(&selected_save, b"not a Fields of Mistria save").unwrap();
         let state = TrackerState::from_repository(Repository::in_memory().unwrap());
-        let active_profile = crate::live_save::ActiveCompanionProfile {
-            profile_id: ProfileId::new("331655283").unwrap(),
-            game_version: "1.0.5".to_owned(),
-        };
 
-        let report = reconcile_confirmed_live_profile_value(
-            &state,
-            &active_profile,
-            &CompatibilityMatrix::embedded().unwrap(),
-            || panic!("an unapproved save parser must not run"),
-        )
-        .unwrap()
-        .unwrap();
-
-        assert_eq!(report["profile_id"], "331655283");
-        assert_eq!(report["imported"], false);
-        assert_eq!(
-            state.active_profile().unwrap().unwrap().as_str(),
-            "331655283"
-        );
+        assert!(import_selected_save_value(&state, &selected_save, &fixture.local).is_err());
+        let snapshots = fixture.local.join("MistriaTracker/backups/game-saves");
+        assert_eq!(fs::read_dir(snapshots).unwrap().count(), 0);
     }
 }
 
@@ -669,18 +550,19 @@ pub fn poll_live_tracking(
 }
 
 #[tauri::command]
-pub fn reconcile_active_live_save(
-    state: State<'_, TrackerState>,
-    mod_data_directory: String,
-) -> Result<Option<Value>, String> {
-    reconcile_active_live_save_value(&state, &mod_data_directory).map_err(|error| error.to_string())
-}
-
-#[tauri::command]
-pub fn import_latest_desktop_backup(
+pub fn import_selected_save(
     state: State<'_, TrackerState>,
     app: tauri::AppHandle,
+    save_path: String,
 ) -> Result<Value, String> {
-    import_latest_desktop_backup_value(&state, &desktop_backup_directories(&app))
-        .map_err(|error| error.to_string())
+    let tracker_local_data = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| error.to_string())?;
+    import_selected_save_value(
+        &state,
+        std::path::Path::new(&save_path),
+        &tracker_local_data,
+    )
+    .map_err(|error| error.to_string())
 }

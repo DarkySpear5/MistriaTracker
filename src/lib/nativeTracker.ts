@@ -29,9 +29,11 @@ export type ReadinessReport = {
 };
 
 export type ExistingImportReport = {
+  status?: 'imported' | 'already_imported' | 'unsupported_version';
   profile_id: string;
   discovered_items: number;
   imported: boolean;
+  game_version?: string;
 };
 
 export function isNativeTrackerRuntime(): boolean {
@@ -87,12 +89,18 @@ export function pollLiveTracking(): Promise<number> {
   return invoke<number>('poll_live_tracking');
 }
 
-export function reconcileActiveLiveSave(modDataDirectory: string): Promise<ExistingImportReport | null> {
-  return invoke<ExistingImportReport | null>('reconcile_active_live_save', { modDataDirectory });
+export async function chooseAndImportSave(): Promise<ExistingImportReport | null> {
+  const selection = await open({
+    multiple: false,
+    title: 'Choose a Fields of Mistria save file',
+    filters: [{ name: 'Fields of Mistria save', extensions: ['sav'] }],
+  });
+  if (typeof selection !== 'string') return null;
+  return importSelectedSave(selection);
 }
 
-export function importLatestDesktopBackup(): Promise<ExistingImportReport> {
-  return invoke<ExistingImportReport>('import_latest_desktop_backup');
+export function importSelectedSave(savePath: string): Promise<ExistingImportReport> {
+  return invoke<ExistingImportReport>('import_selected_save', { savePath });
 }
 
 export function savePreferences(preferences: NativePreferencesInput): Promise<void> {

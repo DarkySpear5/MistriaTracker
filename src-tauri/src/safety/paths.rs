@@ -6,6 +6,11 @@ use std::{
 #[derive(Clone, Debug)]
 pub struct GameSavePath(PathBuf);
 
+/// A user-selected save file. Unlike `GameSavePath`, this path is not required
+/// to live beneath the game's default saves directory.
+#[derive(Clone, Debug)]
+pub struct SelectedSavePath(PathBuf);
+
 #[derive(Clone, Debug)]
 pub struct GameAssetsPath(PathBuf);
 
@@ -46,6 +51,30 @@ impl GameSavePath {
             return Err(GameSavePathError::NotAFile);
         }
 
+        Ok(Self(candidate))
+    }
+
+    pub fn as_path(&self) -> &Path {
+        &self.0
+    }
+}
+
+impl SelectedSavePath {
+    pub fn new(candidate: &Path) -> Result<Self, GameSavePathError> {
+        let candidate = fs::canonicalize(candidate).map_err(GameSavePathError::SavePath)?;
+        if candidate
+            .extension()
+            .and_then(|extension| extension.to_str())
+            != Some("sav")
+        {
+            return Err(GameSavePathError::OutsideSavesDirectory);
+        }
+        if !fs::metadata(&candidate)
+            .map_err(GameSavePathError::SavePath)?
+            .is_file()
+        {
+            return Err(GameSavePathError::NotAFile);
+        }
         Ok(Self(candidate))
     }
 
@@ -155,5 +184,19 @@ mod tests {
         assert!(CompanionLogPath::new(&fixture.local.join("mod_data"), &log).is_ok());
         assert!(CompanionLogPath::new(&fixture.local.join("mod_data"), &other).is_err());
         assert!(CompanionLogPath::new(&fixture.local.join("mod_data"), &fixture.source).is_err());
+    }
+
+    #[test]
+    fn selected_save_accepts_a_regular_sav_from_any_directory() {
+        let fixture = Fixture::new();
+        let outside = fixture.local.join("secondary-drive-copy.sav");
+        fs::write(&outside, b"synthetic").unwrap();
+
+        assert_eq!(
+            SelectedSavePath::new(&outside).unwrap().as_path(),
+            fs::canonicalize(outside).unwrap()
+        );
+        assert!(SelectedSavePath::new(&fixture.saves).is_err());
+        assert!(SelectedSavePath::new(&fixture.local.join("wrong.json")).is_err());
     }
 }

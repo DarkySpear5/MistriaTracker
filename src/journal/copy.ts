@@ -138,12 +138,13 @@ export const labels: Record<string, [string, string]> = {
   tracking: ["Live tracking ready", "Suivi en direct prêt"],
   waiting: ["Waiting for the companion", "En attente du compagnon"],
   offline: ["Tracking unavailable", "Suivi indisponible"],
+  existingDiscoveries: ["Existing discoveries", "Découvertes existantes"],
   local: ["Saved on this computer", "Enregistré sur cet ordinateur"],
   retry: ["Try again", "Réessayer"],
-  import: ["Refresh backup discoveries", "Actualiser depuis la copie"],
+  import: ["Load save file", "Charger un fichier de sauvegarde"],
   importHelp: [
-    "Automatically reads your latest approved Desktop backup on startup.",
-    "Lit automatiquement votre dernière copie approuvée du Bureau au démarrage.",
+    "Choose one .sav file. The selected save file is read-only; Tracker copies it temporarily and never changes the original.",
+    "Choisissez un fichier .sav. Le fichier sélectionné est en lecture seule ; le suivi en crée une copie temporaire et ne modifie jamais l’original.",
   ],
   noData: [
     "Your journal is ready to begin",

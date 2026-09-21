@@ -7,7 +7,7 @@ use crate::{
     },
 };
 use sha2::{Digest, Sha256};
-use std::{fs, io::Read, path::Path};
+use std::path::Path;
 
 #[derive(Clone, Debug)]
 pub struct ExistingDiscoveries {
@@ -19,66 +19,15 @@ pub struct ExistingDiscoveries {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum BackupError {
-    #[error("backup is not a regular .sav file")]
-    InvalidBackup,
-    #[error("backup filename does not contain a numeric Fields of Mistria profile id")]
+pub enum SaveImportError {
+    #[error("selected save filename does not contain a numeric Fields of Mistria profile id")]
     MissingProfileId,
-    #[error("backup exceeds the Tracker safety limit")]
-    InputTooLarge,
-    #[error("could not read the backup: {0}")]
+    #[error("could not read the selected save: {0}")]
     Read(#[from] std::io::Error),
     #[error(transparent)]
     Vault(#[from] VaultError),
     #[error(transparent)]
     Evidence(#[from] EvidenceError),
-}
-
-/// Reads a user-provided backup copy into memory and extracts only the
-/// compatibility-approved discovery records. This function never writes the
-/// backup or opens a live game-save path.
-pub fn existing_discoveries(
-    backup: &Path,
-    compatibility: &CompatibilityMatrix,
-) -> Result<ExistingDiscoveries, BackupError> {
-    let metadata = fs::metadata(backup)?;
-    if backup.extension().and_then(|extension| extension.to_str()) != Some("sav")
-        || !metadata.is_file()
-    {
-        return Err(BackupError::InvalidBackup);
-    }
-    if metadata.len() > crate::save::vault::MAX_COMPRESSED_BYTES as u64 {
-        return Err(BackupError::InputTooLarge);
-    }
-    let bytes = read_backup_bytes(fs::File::open(backup)?)?;
-    discoveries_from_bytes(
-        &bytes,
-        profile_id_from_backup_filename(backup)?,
-        compatibility,
-    )
-}
-
-fn read_backup_bytes<R: Read>(mut input: R) -> Result<Vec<u8>, BackupError> {
-    let limit = crate::save::vault::MAX_COMPRESSED_BYTES;
-    let mut bytes = Vec::with_capacity(limit);
-    let mut buffer = [0_u8; 64 * 1024];
-
-    while bytes.len() < limit {
-        let remaining = limit - bytes.len();
-        let maximum_read = remaining.min(buffer.len());
-        let count = input.read(&mut buffer[..maximum_read])?;
-        if count == 0 {
-            return Ok(bytes);
-        }
-        bytes.extend_from_slice(&buffer[..count]);
-    }
-
-    let mut excess = [0_u8; 1];
-    if input.read(&mut excess)? == 0 {
-        Ok(bytes)
-    } else {
-        Err(BackupError::InputTooLarge)
-    }
 }
 
 /// Extracts approved discoveries from bytes which have already been copied into
@@ -88,7 +37,7 @@ pub fn discoveries_from_bytes(
     bytes: &[u8],
     profile_id: ProfileId,
     compatibility: &CompatibilityMatrix,
-) -> Result<ExistingDiscoveries, BackupError> {
+) -> Result<ExistingDiscoveries, SaveImportError> {
     let source_hash: [u8; 32] = Sha256::digest(&bytes).into();
     let vault = VaultReader::read(bytes)?;
     let game_version = EvidenceExtractor::game_version(&vault)?;
@@ -114,19 +63,19 @@ pub fn discoveries_from_bytes(
     })
 }
 
-fn profile_id_from_backup_filename(path: &Path) -> Result<ProfileId, BackupError> {
+pub(crate) fn profile_id_from_save_filename(path: &Path) -> Result<ProfileId, SaveImportError> {
     let filename = path
         .file_name()
         .and_then(|filename| filename.to_str())
-        .ok_or(BackupError::MissingProfileId)?;
+        .ok_or(SaveImportError::MissingProfileId)?;
     let (_, suffix) = filename
         .rsplit_once("game-")
-        .ok_or(BackupError::MissingProfileId)?;
+        .ok_or(SaveImportError::MissingProfileId)?;
     let profile_id = suffix
         .split('-')
         .next()
-        .ok_or(BackupError::MissingProfileId)?;
-    ProfileId::new(profile_id).map_err(|_| BackupError::MissingProfileId)
+        .ok_or(SaveImportError::MissingProfileId)?;
+    ProfileId::new(profile_id).map_err(|_| SaveImportError::MissingProfileId)
 }
 
 #[cfg(test)]
@@ -134,76 +83,6 @@ mod tests {
     use super::*;
     use crate::test_support::vault::vault_bytes;
     use serde_json::json;
-    use std::fs;
-    use tempfile::tempdir;
-
-    #[test]
-    fn extracts_only_items_from_a_version_approved_backup_copy() {
-        let directory = tempdir().unwrap();
-        let backup = directory.path().join("Ari-game-1849811906-1.sav");
-        fs::write(
-            &backup,
-            vault_bytes(&[
-                (
-                    "info",
-                    json!({"version":{"major":1,"minor":0,"patch":4,"pre":null}}),
-                ),
-                ("header", json!({"name":"Ari","farm_name":"Test"})),
-                (
-                    "player",
-                    json!({"items_acquired":["test_ore","test_seed","test_ore"]}),
-                ),
-            ]),
-        )
-        .unwrap();
-
-        let discoveries =
-            existing_discoveries(&backup, &CompatibilityMatrix::embedded().unwrap()).unwrap();
-        assert_eq!(discoveries.profile_id.as_str(), "1849811906");
-        assert_eq!(discoveries.game_version, "1.0.4");
-        assert_eq!(
-            discoveries
-                .items
-                .iter()
-                .map(ItemId::as_str)
-                .collect::<Vec<_>>(),
-            vec!["test_ore", "test_seed"]
-        );
-    }
-
-    #[test]
-    fn rejects_a_backup_filename_without_a_profile_id() {
-        let directory = tempdir().unwrap();
-        let backup = directory.path().join("copy.sav");
-        fs::write(&backup, b"not read because the name is invalid").unwrap();
-        assert!(matches!(
-            existing_discoveries(&backup, &CompatibilityMatrix::embedded().unwrap()),
-            Err(BackupError::MissingProfileId)
-        ));
-    }
-
-    #[test]
-    fn rejects_an_oversized_backup_before_parsing_it() {
-        let directory = tempdir().unwrap();
-        let backup = directory.path().join("Ari-game-1849811906-1.sav");
-        fs::write(&backup, vec![0; 16 * 1024 * 1024 + 1]).unwrap();
-
-        assert_eq!(
-            existing_discoveries(&backup, &CompatibilityMatrix::embedded().unwrap())
-                .unwrap_err()
-                .to_string(),
-            "backup exceeds the Tracker safety limit"
-        );
-    }
-
-    #[test]
-    fn bounded_backup_read_rejects_growth_past_the_input_limit() {
-        assert!(matches!(
-            read_backup_bytes(std::io::repeat(0)),
-            Err(BackupError::InputTooLarge)
-        ));
-    }
-
     #[test]
     fn extracts_discoveries_from_a_tracker_owned_snapshot_using_the_companion_profile() {
         let bytes = vault_bytes(&[
