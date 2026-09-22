@@ -70,12 +70,12 @@ Section "Mistria Tracker"
   File "..\\src-tauri\\target\\release\\mistria-tracker.exe"
   WriteUninstaller "$INSTDIR\\Uninstall Mistria Tracker.exe"
   CreateDirectory "$SMPROGRAMS\\Mistria Tracker"
-  CreateShortcut "$SMPROGRAMS\\Mistria Tracker\\Mistria Tracker.lnk" "$INSTDIR\\mistria-tracker.exe"
+  CreateShortcut "$SMPROGRAMS\\Mistria Tracker\\Mistria Tracker.lnk" "$INSTDIR\\mistria-tracker.exe" "" "$INSTDIR\\mistria-tracker.exe" 0
   CreateShortcut "$SMPROGRAMS\\Mistria Tracker\\Uninstall Mistria Tracker.lnk" "$INSTDIR\\Uninstall Mistria Tracker.exe"
 SectionEnd
 
 Section /o "Add a desktop shortcut" SecDesktopShortcut
-  CreateShortcut "$DESKTOP\\Mistria Tracker.lnk" "$INSTDIR\\mistria-tracker.exe"
+  CreateShortcut "$DESKTOP\\Mistria Tracker.lnk" "$INSTDIR\\mistria-tracker.exe" "" "$INSTDIR\\mistria-tracker.exe" 0
 SectionEnd
 
 Section /o "Live tracking companion (AIM/MOMI, recommended)" SecCompanion
@@ -113,6 +113,7 @@ Section /o "Live tracking companion (AIM/MOMI, recommended)" SecCompanion
   IfFileExists "$CompanionTarget\\gml\\MistriaTrackerCompanion.gml" companion_installed companion_failed
 
   companion_installed:
+  MessageBox MB_ICONINFORMATION "The live-tracking companion files were installed.$\r$\n$\r$\nOpen AIM or MOMI and apply/rebuild your mods once before starting Fields of Mistria."
   Goto companion_skipped
 
   companion_failed:

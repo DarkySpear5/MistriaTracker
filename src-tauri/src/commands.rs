@@ -4,8 +4,8 @@ use crate::{
     compatibility::{CompatibilityDecision, CompatibilityMatrix, VersionSet},
     domain::ProfileId,
     live_save::{
-        active_profile_from_log, newest_save_for_profile, save_for_companion_filename,
-        ActiveCompanionProfile,
+        newest_save_for_profile, profile_state_from_log, save_for_companion_filename,
+        CompanionProfileState,
     },
     persistence::ImportResult,
     safety::paths::GameAssetsPath,
@@ -154,7 +154,7 @@ pub(crate) struct LiveTrackingSession {
     companion_log: PathBuf,
     saves_directory: PathBuf,
     tracker_local_data: PathBuf,
-    reconciled_activation: Option<ActiveCompanionProfile>,
+    reconciled_activation: CompanionProfileState,
 }
 
 pub struct LiveTrackingRuntime(pub(crate) Mutex<Option<LiveTrackingSession>>);
@@ -268,7 +268,7 @@ fn start_live_tracking_value_with_compatibility(
                 error.to_string(),
             )))
         })?;
-    let active = active_profile_from_log(log.as_path()).map_err(|error| {
+    let active = profile_state_from_log(log.as_path()).map_err(|error| {
         TrackerStateError::Repository(crate::persistence::RepoError::Io(std::io::Error::other(
             error.to_string(),
         )))
@@ -308,7 +308,7 @@ fn poll_live_tracking_value_with_compatibility(
     let session = runtime
         .as_mut()
         .ok_or(TrackerStateError::LiveTrackingPaused)?;
-    let active = active_profile_from_log(&session.companion_log).map_err(|error| {
+    let active = profile_state_from_log(&session.companion_log).map_err(|error| {
         TrackerStateError::Repository(crate::persistence::RepoError::Io(std::io::Error::other(
             error.to_string(),
         )))
@@ -339,13 +339,18 @@ fn poll_live_tracking_value_with_compatibility(
 
 fn reconcile_activation(
     state: &TrackerState,
-    active: Option<ActiveCompanionProfile>,
+    active: CompanionProfileState,
     saves_directory: &std::path::Path,
     tracker_local_data: &std::path::Path,
     matrix: &CompatibilityMatrix,
-) -> Result<Option<ActiveCompanionProfile>, TrackerStateError> {
-    let Some(active) = active else {
-        return Ok(None);
+) -> Result<CompanionProfileState, TrackerStateError> {
+    let active = match active {
+        CompanionProfileState::Unknown => return Ok(CompanionProfileState::Unknown),
+        CompanionProfileState::Inactive => {
+            state.deactivate_profile()?;
+            return Ok(CompanionProfileState::Inactive);
+        }
+        CompanionProfileState::Active(active) => active,
     };
     if matrix.decision(&VersionSet::new(
         active.game_version.clone(),
@@ -353,7 +358,7 @@ fn reconcile_activation(
         active.schema_version,
     )) != CompatibilityDecision::FullySupported
     {
-        return Ok(None);
+        return Ok(CompanionProfileState::Unknown);
     }
     let imported = import_confirmed_live_save_value(
         state,
@@ -363,7 +368,9 @@ fn reconcile_activation(
         tracker_local_data,
         matrix,
     )?;
-    Ok(imported.map(|_| active))
+    Ok(imported
+        .map(|_| CompanionProfileState::Active(active))
+        .unwrap_or(CompanionProfileState::Unknown))
 }
 
 /// Imports one save file explicitly selected by the player. The original is
@@ -963,6 +970,19 @@ mod tests {
             1
         );
         assert_eq!(discovered_count(&state), 1);
+
+        fs::OpenOptions::new()
+            .append(true)
+            .open(&log)
+            .unwrap()
+            .write_all(b"MISTRIA_TRACKER_EVENT|{\"schema_version\":1,\"companion_version\":\"0.1.5\",\"game_version\":\"1.0.5\",\"profile_id\":\"331655283\",\"session_id\":\"00000000-0000-7000-8000-000000000001\",\"sequence\":3,\"type\":\"profile_deactivated\"}\n")
+            .unwrap();
+        assert_eq!(
+            poll_live_tracking_value_with_compatibility(&state, &runtime, &matrix).unwrap(),
+            1
+        );
+        assert!(state.active_profile().unwrap().is_none());
+        assert!(state.journal_snapshot().unwrap().is_none());
 
         fs::OpenOptions::new()
             .append(true)

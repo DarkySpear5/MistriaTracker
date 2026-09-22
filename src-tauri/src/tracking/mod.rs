@@ -41,7 +41,7 @@ impl ProfileProgress {
                         reaction,
                     );
                 }
-                CompanionEvent::ProfileActivated => {}
+                CompanionEvent::ProfileActivated | CompanionEvent::ProfileDeactivated => {}
             }
         }
         progress

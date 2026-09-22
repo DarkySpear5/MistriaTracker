@@ -22,6 +22,13 @@ pub struct ActiveCompanionProfile {
     pub save_file: Option<String>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CompanionProfileState {
+    Unknown,
+    Inactive,
+    Active(ActiveCompanionProfile),
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum LiveSaveError {
     #[error("could not inspect Fields of Mistria saves: {0}")]
@@ -85,6 +92,13 @@ pub fn save_for_companion_filename(
 pub fn active_profile_from_log(
     log: &Path,
 ) -> Result<Option<ActiveCompanionProfile>, LiveSaveError> {
+    Ok(match profile_state_from_log(log)? {
+        CompanionProfileState::Active(active) => Some(active),
+        CompanionProfileState::Unknown | CompanionProfileState::Inactive => None,
+    })
+}
+
+pub fn profile_state_from_log(log: &Path) -> Result<CompanionProfileState, LiveSaveError> {
     let bytes = read_log_tail(log)?;
     let tail = String::from_utf8_lossy(&bytes);
     for line in tail.lines().rev() {
@@ -94,8 +108,11 @@ pub fn active_profile_from_log(
         let Ok(event) = EventEnvelope::from_json(json) else {
             continue;
         };
+        if matches!(event.event, CompanionEvent::ProfileDeactivated) {
+            return Ok(CompanionProfileState::Inactive);
+        }
         if matches!(event.event, CompanionEvent::ProfileActivated) {
-            return Ok(Some(ActiveCompanionProfile {
+            return Ok(CompanionProfileState::Active(ActiveCompanionProfile {
                 schema_version: event.schema_version,
                 companion_version: event.companion_version,
                 profile_id: event.profile_id,
@@ -105,7 +122,7 @@ pub fn active_profile_from_log(
             }));
         }
     }
-    Ok(None)
+    Ok(CompanionProfileState::Unknown)
 }
 
 fn read_log_tail(log: &Path) -> Result<Vec<u8>, LiveSaveError> {
@@ -239,6 +256,22 @@ mod tests {
             active_profile_from_log(&log).unwrap().unwrap().game_version,
             "1.0.5"
         );
+    }
+
+    #[test]
+    fn reports_no_active_profile_after_the_title_screen_event() {
+        let directory = tempdir().unwrap();
+        let log = directory.path().join("mistria_tracker_companion.log");
+        fs::write(
+            &log,
+            concat!(
+                "MISTRIA_TRACKER_EVENT| {\"schema_version\":1,\"companion_version\":\"0.1.5\",\"game_version\":\"1.0.5\",\"profile_id\":\"331655283\",\"session_id\":\"00000000-0000-7000-8000-000000000001\",\"sequence\":1,\"type\":\"profile_activated\",\"save_file\":\"game-331655283-42.sav\"}\n",
+                "MISTRIA_TRACKER_EVENT| {\"schema_version\":1,\"companion_version\":\"0.1.5\",\"game_version\":\"1.0.5\",\"profile_id\":\"331655283\",\"session_id\":\"00000000-0000-7000-8000-000000000001\",\"sequence\":2,\"type\":\"profile_deactivated\"}\n"
+            ),
+        )
+        .unwrap();
+
+        assert!(active_profile_from_log(&log).unwrap().is_none());
     }
 
     #[test]

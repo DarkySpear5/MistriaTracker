@@ -226,6 +226,16 @@ impl Repository {
         Ok(())
     }
 
+    pub fn deactivate_profile(&mut self) -> Result<(), RepoError> {
+        let transaction = self.connection.transaction()?;
+        transaction.execute(
+            "DELETE FROM settings WHERE key IN ('active_profile', 'active_save_file')",
+            [],
+        )?;
+        transaction.commit()?;
+        Ok(())
+    }
+
     pub fn active_profile(&self) -> Result<Option<ProfileId>, RepoError> {
         let profile_id = self
             .connection

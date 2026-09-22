@@ -35,6 +35,49 @@ const search = (query: string) =>
     target: { value: query },
   });
 describe("Desktop journal", () => {
+  it("shows that no save is loaded after the companion deactivates the current profile", async () => {
+    let active: string | null = "ari";
+    vi.useFakeTimers();
+    vi.mocked(invoke).mockImplementation(async (command) => {
+      if (command === "get_preferences")
+        return { language_preference: "auto", effective_language: "eng", spoiler_mode: "free", hints_enabled: false };
+      if (command === "get_profile_summary")
+        return { active_profile: active, profiles: ["ari"] };
+      if (command === "get_journal_snapshot") return active ? testJournal : null;
+      if (command === "start_live_tracking") return;
+      if (command === "poll_live_tracking") {
+        active = null;
+        return 1;
+      }
+      throw new Error("Unexpected command " + command);
+    });
+    try {
+      render(
+        <App
+          nativeRuntime={() => true}
+          resolveGameDirectory={async () => "C:/Test/Fields of Mistria"}
+          readinessProbe={async () => ({
+            catalog: { game_version: "verified", item_count: 3 },
+            catalog_approved: true,
+            companion_log_found: true,
+          })}
+        />,
+      );
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(screen.getAllByText("Ari").length).toBeGreaterThan(0);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1500);
+      });
+
+      expect(screen.getByRole("heading", { name: "No save is currently loaded" })).toBeVisible();
+      expect(screen.queryByText("Ari")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it("recovers polling status and notices a profile change without item events", async () => {
     let offline = false;
     let active = "ari";

@@ -23,6 +23,15 @@ mod test_support;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(windows)]
+    {
+        let app_id: Vec<u16> = "app.mistriatracker.desktop\0".encode_utf16().collect();
+        // A stable Windows identity keeps the running window grouped with the
+        // installer's MT shortcut instead of a stale generic WebView icon.
+        unsafe {
+            windows_sys::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID(app_id.as_ptr());
+        }
+    }
     let Some(_instance) = instance::InstanceGuard::acquire() else {
         instance::focus_existing_tracker();
         return;

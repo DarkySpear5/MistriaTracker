@@ -121,6 +121,16 @@ fn profile_activation_accepts_only_a_sanitized_save_basename() {
 }
 
 #[test]
+fn profile_deactivation_accepts_no_payload_or_save_file() {
+    let event = r#"{"schema_version":1,"companion_version":"0.1.5","game_version":"1.0.5","profile_id":"331655283","session_id":"018f0000-0000-7000-8000-000000000001","sequence":8,"type":"profile_deactivated"}"#;
+
+    let parsed = EventEnvelope::from_json(event).unwrap();
+
+    assert!(matches!(parsed.event, CompanionEvent::ProfileDeactivated));
+    assert!(parsed.save_file.is_none());
+}
+
+#[test]
 fn direct_deserialization_enforces_the_event_contract() {
     assert!(serde_json::from_str::<EventEnvelope>(ITEM_EVENT).is_ok());
     assert!(serde_json::from_str::<EventEnvelope>(&ITEM_EVENT.replacen(

@@ -176,7 +176,7 @@ describe('passive companion safety boundary', () => {
     expect(installer).toContain('RequestExecutionLevel admin');
     expect(installer).toContain('Section /o "Live tracking companion (AIM/MOMI, recommended)"');
     expect(installer).toContain('Section /o "Add a desktop shortcut"');
-    expect(installer).toContain('CreateShortcut "$DESKTOP\\\\Mistria Tracker.lnk" "$INSTDIR\\\\mistria-tracker.exe"');
+    expect(installer).toContain('CreateShortcut "$DESKTOP\\\\Mistria Tracker.lnk" "$INSTDIR\\\\mistria-tracker.exe" "" "$INSTDIR\\\\mistria-tracker.exe" 0');
     expect(installer).toContain('IfFileExists "$GameDirectory\\\\assets.zip"');
     expect(installer).toContain('${StrRep} $R0 $R0 "/" "\\\\"');
     expect(installer).toContain('StrCpy $CompanionTarget "$GameDirectory\\\\mods\\\\MistriaTrackerCompanion"');
@@ -415,7 +415,11 @@ describe('passive companion safety boundary', () => {
     expect(title).toContain(
       'global.mistria_tracker_companion_runtime.awaiting_session_activation = true;',
     );
-    expect(title).not.toContain('mistria_tracker_companion_emit(');
+    expect(title).toContain(
+      'mistria_tracker_companion_emit("profile_deactivated", undefined, undefined);',
+    );
+    expect(title.indexOf('mistria_tracker_companion_emit("profile_deactivated"'))
+      .toBeLessThan(title.indexOf('profile_id = undefined'));
     expect(tick).toContain(
       'if (global.mistria_tracker_companion_runtime.awaiting_session_activation)',
     );

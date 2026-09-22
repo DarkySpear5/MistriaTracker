@@ -159,6 +159,14 @@ impl TrackerState {
             .active_profile()?)
     }
 
+    pub fn deactivate_profile(&self) -> Result<(), TrackerStateError> {
+        self.repository
+            .lock()
+            .map_err(|_| TrackerStateError::Unavailable)?
+            .deactivate_profile()?;
+        Ok(())
+    }
+
     pub fn profiles(&self) -> Result<Vec<ProfileId>, TrackerStateError> {
         Ok(self
             .repository
@@ -272,7 +280,9 @@ impl TrackerState {
             None
         };
         let accepted = repository.accept_event(&event)?;
-        if matches!(event.event, CompanionEvent::ProfileActivated)
+        if matches!(event.event, CompanionEvent::ProfileDeactivated) {
+            repository.deactivate_profile()?;
+        } else if matches!(event.event, CompanionEvent::ProfileActivated)
             || repository.active_profile()?.is_none()
         {
             repository.activate_profile(&event.profile_id)?;

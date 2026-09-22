@@ -27,6 +27,7 @@
       "type": "string",
       "enum": [
         "profile_activated",
+        "profile_deactivated",
         "item_obtained",
         "gift_given",
         "museum_donated"
@@ -42,6 +43,12 @@
       },
       "else": {
         "not": { "required": ["save_file"] }
+      }
+    },
+    {
+      "if": { "properties": { "type": { "const": "profile_deactivated" } } },
+      "then": {
+        "not": { "required": ["payload"] }
       }
     },
     {

@@ -147,12 +147,12 @@ export const labels: Record<string, [string, string]> = {
     "Choisissez un fichier .sav. Le fichier sélectionné est en lecture seule ; le suivi en crée une copie temporaire et ne modifie jamais l’original.",
   ],
   noData: [
-    "Your journal is ready to begin",
-    "Votre journal attend votre aventure",
+    "No save is currently loaded",
+    "Aucune sauvegarde n’est chargée",
   ],
   noDataHelp: [
-    "Load a supported profile and connect the companion to reveal your discoveries.",
-    "Chargez un profil compatible et connectez le compagnon pour retrouver vos découvertes.",
+    "Load a save in Fields of Mistria. Tracker will detect it automatically.",
+    "Chargez une sauvegarde dans Fields of Mistria. Le suivi la détectera automatiquement.",
   ],
   recorded: ["Recorded in your backup", "Enregistré dans votre copie"],
   fish_caught: ["Fish caught", "Poissons pêchés"],

@@ -64,7 +64,12 @@ function mistria_tracker_companion_save_file() {
 }
 
 function mistria_tracker_companion_emit(_type, _payload, _save_file) {
-    var _profile_id = mistria_tracker_companion_profile_id();
+    var _profile_id = undefined;
+    if (_type == "profile_deactivated") {
+        _profile_id = global.mistria_tracker_companion_runtime.profile_id;
+    } else {
+        _profile_id = mistria_tracker_companion_profile_id();
+    }
     if (_profile_id == undefined) return;
 
     global.mistria_tracker_companion_runtime.profile_id = _profile_id;
@@ -123,6 +128,7 @@ function mistria_tracker_companion_tick() {
 }
 
 function mistria_tracker_companion_title_entered(_ctx) {
+    mistria_tracker_companion_emit("profile_deactivated", undefined, undefined);
     global.mistria_tracker_companion_runtime.awaiting_session_activation = true;
     global.mistria_tracker_companion_runtime.profile_id = undefined;
     global.mistria_tracker_companion_runtime.pending_gift = undefined;

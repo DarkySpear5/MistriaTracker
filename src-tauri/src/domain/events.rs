@@ -24,6 +24,7 @@ pub struct EventEnvelope {
 #[serde(tag = "type", content = "payload", rename_all = "snake_case")]
 pub enum CompanionEvent {
     ProfileActivated,
+    ProfileDeactivated,
     ItemObtained {
         item_id: ItemId,
         count: u32,
@@ -195,6 +196,7 @@ fn validate_event_shape(value: &Value) -> Result<(), EventError> {
                 }
             }
         }
+        "profile_deactivated" => {}
         "item_obtained" => {
             allowed.push("payload");
             validate_payload(envelope, &["item_id", "count"])?;
