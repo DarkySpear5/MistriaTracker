@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Entry, Filters, Journal, Language, View } from "./types";
+import { genericHint, type Entry, type Filters, type Hint, type Journal, type Language, type View } from "./types";
 import { categoryOrder, tr } from "./copy";
 import { filterEntries } from "./search";
 import { Icon } from "./Icon";
@@ -8,7 +8,7 @@ export type ScreenProps = {
   journal: Journal;
   language: Language;
   onEntry: (key: string) => void;
-  onHint: (category: string) => void;
+  onHint: (hint: Hint) => void;
   onNavigate: (view: View, category?: string) => void;
   filters: Filters;
 };
@@ -58,7 +58,7 @@ export function EntrySlot({
   entry: Entry;
   language: Language;
   onEntry: (key: string) => void;
-  onHint: (category: string) => void;
+  onHint: (hint: Hint) => void;
   museum?: boolean;
 }) {
   return (
@@ -73,7 +73,7 @@ export function EntrySlot({
           : tr(language, "unknownItem")
       }
       onClick={() =>
-        entry.revealed ? onEntry(entry.key) : onHint(entry.hint ?? entry.category)
+        entry.revealed ? onEntry(entry.key) : onHint(entry.hint ?? genericHint(entry.category))
       }
     >
       <Artwork
@@ -316,7 +316,7 @@ export function Encyclopedia(props: ScreenProps & { category: string | null }) {
             onClick={() =>
               entry.revealed
                 ? props.onEntry(entry.key)
-                : props.onHint(entry.hint ?? category)
+                : props.onHint(entry.hint ?? genericHint(category))
             }
           >
             <div className="catalog-art">
@@ -518,7 +518,7 @@ export function Villagers(props: ScreenProps) {
                           onClick={() =>
                             gift.revealed && gift.entry
                               ? props.onEntry(gift.entry)
-                              : props.onHint("gift")
+                              : props.onHint(gift.hint ?? genericHint("gift"))
                           }
                         >
                           <Artwork

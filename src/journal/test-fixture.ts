@@ -26,7 +26,7 @@ export const testJournal: Journal = {
       description: null,
       found: false,
       revealed: false,
-      hint: "fish_cave",
+      hint: { kind: "fish", activity: null, areas: ["mines"], seasons: [], source: null },
       seasons: [],
       places: [],
     },

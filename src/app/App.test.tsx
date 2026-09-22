@@ -323,14 +323,14 @@ describe("Desktop journal", () => {
       screen.getByRole("heading", { name: "Someone to meet" }),
     ).toBeVisible();
   });
-  it("gives a hidden fish a useful cave clue without naming it", () => {
+  it("gives a hidden fish a useful mine clue without naming it", () => {
     preview();
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     fireEvent.click(screen.getByRole("switch", { name: /gentle hints/i }));
     nav("Encyclopaedia");
     fireEvent.click(screen.getByRole("button", { name: /Fish 2 \/ 3/ }));
     fireEvent.click(screen.getByRole("button", { name: /^Undiscovered/ }));
-    expect(screen.getByRole("dialog")).toHaveTextContent(/cave/i);
+    expect(screen.getByRole("dialog")).toHaveTextContent(/mines/i);
     expect(screen.getByRole("dialog")).not.toHaveTextContent("Trout");
   });
   it("switches navigation and search labels to French", () => {

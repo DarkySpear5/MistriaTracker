@@ -4,6 +4,20 @@ export type Language = SupportedLocale;
 export type View =
   "overview" | "museum" | "villagers" | "encyclopedia" | "settings";
 export type Source = { view: View; key: string; label: string; entry?: string };
+export type Hint = {
+  kind: string;
+  activity: string | null;
+  areas: string[];
+  seasons: string[];
+  source: string | null;
+};
+export const genericHint = (kind: string): Hint => ({
+  kind,
+  activity: null,
+  areas: [],
+  seasons: [],
+  source: null,
+});
 export type Entry = {
   key: string;
   id: string | null;
@@ -16,7 +30,7 @@ export type Entry = {
   donated: boolean;
   seasons: string[];
   places: string[];
-  hint?: string | null;
+  hint?: Hint | null;
   sources: Source[];
   ingredients: { key: string | null; name: string | null; count: number }[];
 };
@@ -27,6 +41,7 @@ export type Gift = {
   art: string | null;
   found: boolean;
   revealed: boolean;
+  hint?: Hint | null;
 };
 export type Villager = {
   key: string;

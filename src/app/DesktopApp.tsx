@@ -14,6 +14,7 @@ import {
   chooseAndSaveGameDirectory,
 } from "../lib/nativeTracker";
 import { ArtworkProvider } from "../journal/Artwork";
+import { HintCard } from "../journal/HintCard";
 import { Icon } from "../journal/Icon";
 import { DetailPanel } from "../journal/DetailPanel";
 import { Toolbar } from "../journal/Toolbar";
@@ -36,6 +37,7 @@ import {
   type Filters,
   type Journal,
   type Language,
+  type Hint,
   type Source,
   type View,
 } from "../journal/types";
@@ -72,7 +74,7 @@ export function DesktopApp({
   const [view, setView] = useState<View>("overview");
   const [category, setCategory] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [hint, setHint] = useState<string | null>(null);
+  const [hint, setHint] = useState<Hint | null>(null);
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [busy, setBusy] = useState(native && !initialJournal);
   const [status, setStatus] = useState("waiting");
@@ -320,8 +322,8 @@ export function DesktopApp({
         0,
       );
   };
-  const showHint = (kind: string) => {
-    if (hints && !spoilers) setHint(kind);
+  const showHint = (value: Hint) => {
+    if (hints && !spoilers) setHint(value);
   };
   const screen = journal
     ? {
@@ -619,34 +621,7 @@ export function DesktopApp({
               aria-labelledby="hint-title"
               onClick={(event) => event.stopPropagation()}
             >
-              <button
-                autoFocus
-                className="icon-button"
-                aria-label={tr(language, "close")}
-                onClick={() => setHint(null)}
-              >
-                <Icon name="close" />
-              </button>
-              <Icon name="spark" size={30} />
-              <h2 id="hint-title">{tr(language, "hintTitle")}</h2>
-              <p>
-                {tr(
-                  language,
-                  `hint_${[
-                    "fish",
-                    "fish_cave",
-                    "fish_coast",
-                    "fish_river",
-                    "fish_pond",
-                    "region_east",
-                    "crops",
-                    "bugs",
-                    "artifacts",
-                    "recipes",
-                    "gift",
-                  ].includes(hint) ? hint : "generic"}`,
-                )}
-              </p>
+              <HintCard hint={hint} language={language} onClose={() => setHint(null)} />
             </div>
           </div>
         )}

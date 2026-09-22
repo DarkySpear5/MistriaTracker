@@ -60,7 +60,7 @@ describe('ItemsPage', () => {
       { id: 'garden_bean', name: 'Garden Bean', description: 'A tender crop.', seasons: ['Spring'], locations: ['Farm'] },
     ]} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Place' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Location' }));
     expect(screen.getAllByRole('button', { name: /Ocean Shell|Garden Bean/ }).map((element) => element.textContent)).toEqual(['Garden Bean', 'Ocean Shell']);
     expect(screen.queryByText('Secret Fish')).not.toBeInTheDocument();
   });
