@@ -217,6 +217,26 @@ fn hint_mine_fish_uses_mines_instead_of_default_river() {
 }
 
 #[test]
+fn hint_trap_only_fish_does_not_inherit_default_river() {
+    let catalog = hint_fixture(&[
+        (
+            "assets/fiddle/items/fish/misc.toml",
+            "[blue_crab]\nname = \"Secret Crab\"\ndescription = \"Hidden.\"",
+        ),
+        (
+            "assets/fiddle/fish.toml",
+            "[default]\nseasons = false\nwater_type = \"river\"\nretrieval = \"fishing\"\n[blue_crab]\nretrieval = \"fish_trap\"",
+        ),
+    ]);
+    let hint = &hidden_snapshot(&catalog)["entries"][0]["hint"];
+    assert_eq!(hint["areas"], serde_json::json!([]));
+    assert_eq!(
+        hint["seasons"],
+        serde_json::json!(["spring", "summer", "fall", "winter"])
+    );
+}
+
+#[test]
 fn hint_spawn_and_growth_metadata_provide_seasons_without_item_names() {
     let catalog = hint_fixture(&[
         (
@@ -345,8 +365,12 @@ fn hint_hidden_gift_shows_an_activity_without_its_identity_or_reaction() {
         Language::Eng,
         SpoilerMode::Free,
     );
-    let gift = &snapshot["villagers"][0]["loved"][0];
+    let gift = &snapshot["villagers"][0]["untried"][0];
 
+    assert_eq!(snapshot["villagers"][0]["loved"], serde_json::json!([]));
+    assert_eq!(snapshot["villagers"][0]["liked"], serde_json::json!([]));
+    assert!(!gift["key"].as_str().unwrap().contains("loved"));
+    assert!(!gift["key"].as_str().unwrap().contains("liked"));
     assert_eq!(gift["hint"]["kind"], "gift");
     assert_eq!(gift["hint"]["activity"], "crops");
     assert!(gift["entry"].is_null());

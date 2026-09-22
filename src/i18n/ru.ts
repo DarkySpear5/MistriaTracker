@@ -73,6 +73,7 @@ export const ru: LocaleDictionary = {
   back: "Все категории",
   loved: "Очень нравится",
   liked: "Нравится",
+  untriedGifts: "Непроверенные подарки",
   unknownVillager: "С кем ещё предстоит познакомиться",
   unknownItem: "Не обнаружено",
   hiddenHelp: "Продолжайте исследовать мир, чтобы раскрыть эту находку.",

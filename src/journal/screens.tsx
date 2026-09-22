@@ -495,18 +495,15 @@ export function Villagers(props: ScreenProps) {
             </header>
             {npc.revealed && (
               <>
-                {(["loved", "liked"] as const).map((group) => (
+                {(["loved", "liked", "untried"] as const).filter((group) => npc[group].length > 0).map((group) => (
                   <section className="gift-group" key={group}>
                     <h3>
                       <Icon
                         name={group === "loved" ? "heart" : "spark"}
                         size={13}
                       />
-                      {tr(language, group)}
-                      <span>
-                        {npc[group].filter((gift) => gift.found).length}/
-                        {npc[group].length}
-                      </span>
+                      {tr(language, group === "untried" ? "untriedGifts" : group)}
+                      <span>{npc[group].length}</span>
                     </h3>
                     <div className="gift-slots">
                       {npc[group].map((gift) => (

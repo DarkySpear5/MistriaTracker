@@ -73,6 +73,7 @@ export const ja: LocaleDictionary = {
   back: "すべてのカテゴリ",
   loved: "大好き",
   liked: "好き",
+  untriedGifts: "まだ贈っていない品",
   unknownVillager: "これから出会う人",
   unknownItem: "未発見",
   hiddenHelp: "探索を続けて発見を明らかにしましょう。",

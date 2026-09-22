@@ -52,6 +52,7 @@ export type Villager = {
   revealed: boolean;
   loved: Gift[];
   liked: Gift[];
+  untried: Gift[];
 };
 export type MuseumSet = {
   id: string;

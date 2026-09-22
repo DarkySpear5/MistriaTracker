@@ -53,6 +53,10 @@ fn installed_assets_archive_builds_the_full_journal_catalog() {
     );
     assert!(journal.entries.len() > 100);
     assert!(journal.entries.contains_key("paper_pondshell"));
+    assert!(!journal.entries["blue_crab"]
+        .hint_facts
+        .areas
+        .contains(&"river".to_owned()));
     for category in [
         "fish",
         "bugs",

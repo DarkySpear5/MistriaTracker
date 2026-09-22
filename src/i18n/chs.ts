@@ -73,6 +73,7 @@ export const chs: LocaleDictionary = {
   back: "所有类别",
   loved: "最喜欢",
   liked: "喜欢",
+  untriedGifts: "尚未尝试的礼物",
   unknownVillager: "尚未结识",
   unknownItem: "未发现",
   hiddenHelp: "继续探索以揭开这项发现。",

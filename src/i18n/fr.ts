@@ -73,6 +73,7 @@ export const fr: LocaleDictionary = {
   back: "Toutes les catégories",
   loved: "Adorés",
   liked: "Appréciés",
+  untriedGifts: "Cadeaux non essayés",
   unknownVillager: "Une future rencontre",
   unknownItem: "À découvrir",
   hiddenHelp: "Continuez votre exploration pour révéler cette découverte.",

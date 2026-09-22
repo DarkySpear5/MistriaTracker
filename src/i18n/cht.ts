@@ -73,6 +73,7 @@ export const cht: LocaleDictionary = {
   back: "所有類別",
   loved: "最喜歡",
   liked: "喜歡",
+  untriedGifts: "尚未嘗試的禮物",
   unknownVillager: "尚未結識",
   unknownItem: "未發現",
   hiddenHelp: "繼續探索以揭曉這項發現。",

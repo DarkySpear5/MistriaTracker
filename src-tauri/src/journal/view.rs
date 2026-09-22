@@ -163,6 +163,7 @@ pub fn snapshot(
         let known = met.contains(&villager.id);
         let revealed = all || known;
         let mut groups = BTreeMap::new();
+        let mut untried = Vec::new();
         for (group, ids) in [("loved", &villager.loved), ("liked", &villager.liked)] {
             let mut slots = Vec::new();
             for (slot_index, id) in ids.iter().enumerate() {
@@ -173,6 +174,11 @@ pub fn snapshot(
                     .get(&villager.id)
                     .is_some_and(|values| values.contains(id));
                 let visible = revealed && (all || found);
+                if revealed && !visible {
+                    let key = format!("g{index}:untried:{}", untried.len());
+                    untried.push(json!({"key":key,"entry":null,"name":null,"art":null,"found":false,"revealed":false,"hint":hint_for(definition, true)}));
+                    continue;
+                }
                 let key = format!("g{index}:{group}:{slot_index}");
                 slots.push(json!({"key":key,"entry":visible.then(||keys.get(id)).flatten(),"name":visible.then_some(entry_name(definition, locale)),"art":key,"found":found,"revealed":visible,"hint":hint_for(definition, true)}));
                 if visible && revealed_ids.contains(id) {
@@ -182,7 +188,7 @@ pub fn snapshot(
             }
             groups.insert(group, slots);
         }
-        villagers.push(json!({"key":format!("n{index}"),"name":revealed.then_some(villager_name(villager, locale)),"bio":revealed.then_some(villager_bio(villager, locale)),"art":format!("n{index}"),"met":known,"revealed":revealed,"loved":if revealed {groups.remove("loved").unwrap_or_default()} else {vec![]},"liked":if revealed {groups.remove("liked").unwrap_or_default()} else {vec![]}}));
+        villagers.push(json!({"key":format!("n{index}"),"name":revealed.then_some(villager_name(villager, locale)),"bio":revealed.then_some(villager_bio(villager, locale)),"art":format!("n{index}"),"met":known,"revealed":revealed,"loved":if revealed {groups.remove("loved").unwrap_or_default()} else {vec![]},"liked":if revealed {groups.remove("liked").unwrap_or_default()} else {vec![]},"untried":untried}));
     }
     for entry in &mut entries {
         let Some(id) = entry["id"].as_str().map(str::to_owned) else {

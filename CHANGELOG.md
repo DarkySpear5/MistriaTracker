@@ -8,6 +8,9 @@
   store, mail, quest, museum, random reward, or starting recipe.
 - Added spoiler-safe gift hints for the item's broad activity and any verified
   season or area, without revealing its identity or the villager's reaction.
+- Kept untried gifts in a neutral group until tried, so their Loved/Liked
+  reaction is not exposed by the journal layout.
+- Suppressed misleading River clues for fish that can only come from a trap.
 - Localized the new hints in all eight supported Tracker languages. Missing
   metadata omits the unsupported detail instead of guessing.
 - Added a unified language setting: Auto-detect or choose one language for both

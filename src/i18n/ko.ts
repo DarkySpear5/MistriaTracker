@@ -73,6 +73,7 @@ export const ko: LocaleDictionary = {
   back: "전체 카테고리",
   loved: "아주 좋아함",
   liked: "좋아함",
+  untriedGifts: "아직 주지 않은 선물",
   unknownVillager: "앞으로 만날 주민",
   unknownItem: "미발견",
   hiddenHelp: "계속 탐험하며 발견을 밝혀 보세요.",

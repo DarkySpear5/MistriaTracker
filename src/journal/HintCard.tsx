@@ -3,6 +3,7 @@ import { tr } from "./copy";
 import { Icon } from "./Icon";
 
 const kinds = new Set(["fish", "bugs", "crops", "forageables", "artifacts", "recipes", "gift"]);
+const activities = new Set(["fish", "bugs", "crops", "forageables", "artifacts", "dishes", "recipes", "furniture", "materials", "ranching", "blacksmithing"]);
 const areas = new Set(["pond", "river", "ocean", "mines", "beach", "deep_woods", "outdoors", "narrows", "eastern_road", "haydens_farm", "western_ruins", "farm"]);
 const seasons = new Set(["spring", "summer", "fall", "winter"]);
 const sources = new Set(["store", "mail", "quest", "museum", "random", "start"]);
@@ -10,7 +11,7 @@ const areaKey = (code: string) => ["pond", "river", "ocean", "mines"].includes(c
 
 export function HintCard({ hint, language, onClose }: { hint: Hint; language: Language; onClose: () => void }) {
   const kind = kinds.has(hint.kind) ? hint.kind : "generic";
-  const activity = hint.activity && kinds.has(hint.activity) ? hint.activity : null;
+  const activity = hint.activity && activities.has(hint.activity) ? hint.activity : null;
   return (
     <>
       <button autoFocus className="icon-button" aria-label={tr(language, "close")} onClick={onClose}>

@@ -71,6 +71,7 @@ export const en = {
   back: "All categories",
   loved: "Loved",
   liked: "Liked",
+  untriedGifts: "Untried gifts",
   unknownVillager: "Someone to meet",
   unknownItem: "Undiscovered",
   hiddenHelp: "Keep exploring to reveal this discovery.",

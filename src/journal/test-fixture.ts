@@ -51,6 +51,7 @@ export const testJournal: Journal = {
       revealed: true,
       loved: [],
       liked: [],
+      untried: [],
     },
     {
       key: "n2",
@@ -61,6 +62,7 @@ export const testJournal: Journal = {
       revealed: false,
       loved: [],
       liked: [],
+      untried: [],
     },
   ],
   categories: [{ id: "fish", completed: 2, total: 3 }],

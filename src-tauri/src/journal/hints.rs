@@ -177,6 +177,10 @@ fn apply_fish(catalog: &mut JournalCatalog, document: &Value) {
             .add_seasons(field(definition, default, "seasons"), true);
         let retrieval = strings(field(definition, default, "retrieval"));
         let mined = retrieval.contains(&"mines");
+        let trap_only = retrieval.contains(&"fish_trap")
+            && !retrieval
+                .iter()
+                .any(|value| matches!(*value, "fishing" | "divespot"));
         if mined {
             item.hint_facts.add_area("mines");
         }
@@ -191,7 +195,7 @@ fn apply_fish(catalog: &mut JournalCatalog, document: &Value) {
                 .iter()
                 .any(|value| matches!(*value, "fishing" | "divespot"))
         {
-            let water = if mined {
+            let water = if mined || trap_only {
                 definition.get("water_type")
             } else {
                 field(definition, default, "water_type")

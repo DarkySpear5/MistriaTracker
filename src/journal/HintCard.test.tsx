@@ -42,6 +42,11 @@ it("offers a gift activity without exposing the recipient's reaction", () => {
   expect(screen.queryByText(/loved|liked/i)).not.toBeInTheDocument();
 });
 
+it("shows non-crop gift activities when the game validates them", () => {
+  render(<HintCard language="eng" hint={hint({ kind: "gift", activity: "dishes" })} onClose={() => {}} />);
+  expect(screen.getByText(/dishes/i)).toBeVisible();
+});
+
 it("renders each supported language without exposing raw hint codes", () => {
   for (const locale of localeOptions) {
     const { container, unmount } = render(<HintCard language={locale.value} hint={hint({ kind: "recipes", source: "store", areas: ["beach"] })} onClose={() => {}} />);

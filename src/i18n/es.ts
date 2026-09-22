@@ -73,6 +73,7 @@ export const es: LocaleDictionary = {
   back: "Todas las categorías",
   loved: "Le encanta",
   liked: "Le gusta",
+  untriedGifts: "Regalos sin probar",
   unknownVillager: "Alguien por conocer",
   unknownItem: "Sin descubrir",
   hiddenHelp: "Sigue explorando para revelar este descubrimiento.",
