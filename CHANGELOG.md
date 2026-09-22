@@ -1,9 +1,7 @@
 # Changelog
 
-## Unreleased — testing
+## 0.1.6 — 2026-09-22
 
-- Synchronized the testing branch with the complete published 0.1.5 code
-  before beginning new work.
 - Reused the Tracker's tested Steam `libraryfolders.vdf` discovery in the
   Windows installer instead of maintaining a second hard-coded Steam search.
 - Normalized Steam registry, library, and fallback paths to native Windows

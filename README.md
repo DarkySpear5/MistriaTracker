@@ -10,7 +10,7 @@ Download the latest Windows installer from the
 [official GitHub Releases page](https://github.com/DarkySpear5/MistriaTracker/releases/latest),
 then follow these steps:
 
-1. Close Fields of Mistria and run `MistriaTracker-0.1.5-setup.exe`.
+1. Close Fields of Mistria and run `MistriaTracker-0.1.6-setup.exe`.
 2. Leave **Live tracking companion (AIM/MOMI, recommended)** selected. The
    installer uses Steam's library list to find default and custom libraries.
    Only if automatic detection fails, choose the main *Fields of Mistria* game
@@ -160,6 +160,6 @@ in this repository.
 
 Maintainers can build a portable ZIP and its checksum with
 `pnpm package:portable`. It is a developer distribution option and is not part
-of the official 0.1.5 release.
+of the official Windows installer release.
 
 End-user setup is documented in [`docs/MOMI_INSTALL_GUIDE.md`](docs/MOMI_INSTALL_GUIDE.md).

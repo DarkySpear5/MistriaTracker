@@ -13,7 +13,7 @@ function mistria_tracker_companion_boot() {
         awaiting_session_activation: true,
     };
 
-    mmapi_mod_declare("mistria_tracker_companion", "0.1.5");
+    mmapi_mod_declare("mistria_tracker_companion", "0.1.6");
     mmapi_register(mistria_tracker_companion_tick);
     mmapi_filter("items.give", mistria_tracker_companion_items_give);
     mmapi_on("npc.gift_received", mistria_tracker_companion_gift_received);
@@ -76,7 +76,7 @@ function mistria_tracker_companion_emit(_type, _payload, _save_file) {
     global.mistria_tracker_companion_runtime.sequence += 1;
     var _event = {
         schema_version: 1,
-        companion_version: "0.1.5",
+        companion_version: "0.1.6",
         game_version: "1.0.5",
         profile_id: _profile_id,
         session_id: global.mistria_tracker_companion_runtime.session_id,
