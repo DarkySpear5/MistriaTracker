@@ -213,13 +213,13 @@ mod tests {
     }
 
     #[test]
-    fn unsupported_or_malformed_steam_languages_fall_back_to_english() {
+    fn russian_is_supported_while_malformed_steam_languages_fall_back_to_english() {
         let russian = fixture_game_directory_with_manifest("russian");
         let malformed = fixture_game_directory_with_manifest("<bad>");
 
         assert_eq!(
             effective_language(LanguagePreference::Auto, Some(&russian.game)),
-            Language::Eng
+            Language::Rus
         );
         assert_eq!(
             effective_language(LanguagePreference::Auto, Some(&malformed.game)),

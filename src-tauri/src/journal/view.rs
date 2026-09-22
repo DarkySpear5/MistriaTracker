@@ -1,4 +1,4 @@
-use super::{catalog::JournalCatalog, evidence::JournalEvidence};
+use super::{catalog::JournalCatalog, evidence::JournalEvidence, hints::hint_for};
 use crate::{
     domain::{ItemId, Language, SpoilerMode},
     tracking::ProfileProgress,
@@ -138,7 +138,7 @@ pub fn snapshot(
         let key = format!("e{index}");
         keys.insert(id.clone(), key.clone());
         let revealed = all || found;
-        entries.push(json!({"key":key,"id":revealed.then_some(id),"category":definition.category,"name":revealed.then_some(entry_name(definition, locale)),"description":revealed.then_some(entry_description(definition, locale)),"art":key,"found":found,"revealed":revealed,"donated":donated.contains(id),"seasons":if revealed {definition.seasons.clone()} else {vec![]},"places":if revealed {definition.places.clone()} else {vec![]},"hint":hint_for(definition),"sources":[],"ingredients":[]}));
+        entries.push(json!({"key":key,"id":revealed.then_some(id),"category":definition.category,"name":revealed.then_some(entry_name(definition, locale)),"description":revealed.then_some(entry_description(definition, locale)),"art":key,"found":found,"revealed":revealed,"donated":donated.contains(id),"seasons":if revealed {definition.seasons.clone()} else {vec![]},"places":if revealed {definition.places.clone()} else {vec![]},"hint":hint_for(definition, false),"sources":[],"ingredients":[]}));
     }
     let revealed_ids: BTreeSet<String> = entries
         .iter()
@@ -174,7 +174,7 @@ pub fn snapshot(
                     .is_some_and(|values| values.contains(id));
                 let visible = revealed && (all || found);
                 let key = format!("g{index}:{group}:{slot_index}");
-                slots.push(json!({"key":key,"entry":visible.then(||keys.get(id)).flatten(),"name":visible.then_some(entry_name(definition, locale)),"art":key,"found":found,"revealed":visible}));
+                slots.push(json!({"key":key,"entry":visible.then(||keys.get(id)).flatten(),"name":visible.then_some(entry_name(definition, locale)),"art":key,"found":found,"revealed":visible,"hint":hint_for(definition, true)}));
                 if visible && revealed_ids.contains(id) {
                     let group_label = gift_group_label(locale, group);
                     sources.entry(id.clone()).or_default().push(json!({"view":"villagers","key":format!("n{index}"),"label":format!("{} · {}", villager_name(villager, locale), group_label)}));
@@ -259,42 +259,5 @@ fn protected_sprite(sprite: &str, revealed: bool) -> String {
         sprite.to_owned()
     } else {
         format!("{sprite}_hidden")
-    }
-}
-
-/// A hint is intentionally a broad, non-identifying condition. Exact locations,
-/// names, and seasons stay behind the spoiler boundary.
-fn hint_for(entry: &crate::journal::catalog::Entry) -> &'static str {
-    let places = entry
-        .places
-        .iter()
-        .map(|place| place.to_ascii_lowercase())
-        .collect::<Vec<_>>();
-    if places.iter().any(|place| place.contains("east")) {
-        return "region_east";
-    }
-    if entry.category == "fish" {
-        if places.iter().any(|place| place.contains("mine")) {
-            return "fish_cave";
-        }
-        if places
-            .iter()
-            .any(|place| place.contains("ocean") || place.contains("coast"))
-        {
-            return "fish_coast";
-        }
-        if places.iter().any(|place| place.contains("river")) {
-            return "fish_river";
-        }
-        if places.iter().any(|place| place.contains("pond")) {
-            return "fish_pond";
-        }
-    }
-    match entry.category.as_str() {
-        "crops" => "crops",
-        "bugs" => "bugs",
-        "artifacts" => "artifacts",
-        "recipes" => "recipes",
-        _ => "generic",
     }
 }

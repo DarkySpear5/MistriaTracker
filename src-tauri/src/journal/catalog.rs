@@ -1,3 +1,4 @@
+use super::hints::{populate_hint_facts, HintFacts};
 use crate::catalog::{AssetsZip, CatalogError};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fs::File, io::Read};
@@ -22,6 +23,8 @@ pub struct Entry {
     pub recipe_key: Option<String>,
     pub ingredients: Vec<(String, u64)>,
     pub related_item: Option<String>,
+    #[serde(default)]
+    pub hint_facts: HintFacts,
 }
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct MuseumSet {
@@ -197,6 +200,19 @@ impl JournalCatalog {
                     path.as_str(),
                     "assets/fiddle/fish.toml"
                         | "assets/fiddle/bugs.toml"
+                        | "assets/fiddle/object_prototypes/crop.toml"
+                        | "assets/fiddle/forageables.toml"
+                        | "assets/fiddle/artifacts.toml"
+                        | "assets/fiddle/stores.toml"
+                        | "assets/fiddle/letters.toml"
+                        | "assets/fiddle/festivals.toml"
+                        | "assets/fiddle/wishing_well.toml"
+                        | "assets/fiddle/chicken_statue.toml"
+                        | "assets/fiddle/cutscenes.toml"
+                        | "assets/fiddle/quests/fetch_quests.toml"
+                        | "assets/fiddle/quests/story_quests.toml"
+                        | "assets/fiddle/quests/stillwell_challenges.toml"
+                        | "assets/fiddle/quests/tali_challenges.toml"
                         | "assets/fiddle/perks.toml"
                         | "assets/fiddle/spells.toml"
                         | "assets/fiddle/dates.toml"
@@ -318,6 +334,9 @@ impl JournalCatalog {
                     learned.id = format!("recipe:{recipe_key}");
                     learned.category = "recipes".into();
                     learned.related_item = Some(id.clone());
+                    if value.get("recipe_is_default").and_then(Value::as_bool) == Some(true) {
+                        learned.hint_facts.add_source("start");
+                    }
                     learned.ingredients = recipe
                         .iter()
                         .filter_map(|ingredient| {
@@ -554,6 +573,7 @@ impl JournalCatalog {
                 }
             }
         }
+        populate_hint_facts(&mut catalog, &documents);
         Ok(catalog)
     }
 }

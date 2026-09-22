@@ -53,4 +53,25 @@ fn installed_assets_archive_builds_the_full_journal_catalog() {
     );
     assert!(journal.entries.len() > 100);
     assert!(journal.entries.contains_key("paper_pondshell"));
+    for category in [
+        "fish",
+        "bugs",
+        "crops",
+        "forageables",
+        "artifacts",
+        "recipes",
+    ] {
+        let hinted = journal
+            .entries
+            .values()
+            .filter(|entry| {
+                entry.category == category
+                    && (!entry.hint_facts.areas.is_empty()
+                        || !entry.hint_facts.seasons.is_empty()
+                        || entry.hint_facts.recipe_source.is_some())
+            })
+            .count();
+        println!("{category} data-backed hints={hinted}");
+        assert!(hinted > 0, "no data-backed hints for {category}");
+    }
 }

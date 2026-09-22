@@ -14,6 +14,7 @@ mod tests {
         domain::ItemId,
         tracking::ProfileProgress,
     };
+    use std::collections::BTreeMap;
 
     fn fixture_policy() -> SpoilerPolicy {
         SpoilerPolicy
@@ -45,8 +46,7 @@ mod tests {
             None,
             vec![],
             vec![],
-            text.clone(),
-            text,
+            BTreeMap::from([("eng".into(), text.clone()), ("fra".into(), text)]),
         )
     }
 
