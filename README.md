@@ -10,7 +10,8 @@ Download the latest Windows installer from the
 [official GitHub Releases page](https://github.com/DarkySpear5/MistriaTracker/releases/latest),
 then follow these steps:
 
-1. Close Fields of Mistria and run `MistriaTracker-0.1.7-setup.exe`.
+1. Close Fields of Mistria and run the latest published Windows installer from
+   the Releases page. Testing-branch changes are not included until released.
 2. Leave **Live tracking companion (AIM/MOMI, recommended)** selected. The
    installer uses Steam's library list to find default and custom libraries.
    Only if automatic detection fails, choose the main *Fields of Mistria* game
@@ -53,6 +54,12 @@ detection and live tracking. Neither tool needs to remain open while playing.
 Without an applied Companion, Mistria Tracker can still import a supported save
 through Settings > **Load save file** and show its local tracker data. The
 tracker never edits a Fields of Mistria save file.
+
+With gentle hints enabled, undiscovered entries can show broad game-data clues
+such as a fish's area and season or a recipe's acquisition method. The hint
+never names an undiscovered item or reveals an untried gift reaction. When game
+data does not confirm a detail, Tracker leaves it out.
+
 See the [complete MOMI installation and troubleshooting guide](docs/MOMI_INSTALL_GUIDE.md)
 if nothing appears.
 

@@ -48,9 +48,10 @@ testing branch pending language review.
   incomplete interface locales.
 - Add additional complete official game locales in later testing stages.
 
-## 4. GitHub update delivery
+## 4. GitHub update delivery — deferred
 
-Status: requires a separate security and release design.
+Status: explicitly deferred. Do not implement an auto-updater in the 0.1.7
+testing branch; it needs a separate security and release decision later.
 
 - Check GitHub releases only when the player explicitly enables update checks.
 - Download and install only a verified release artifact; never auto-run an
@@ -61,13 +62,17 @@ Status: requires a separate security and release design.
 
 ## 5. Useful, spoiler-safe hints
 
-Status: future product design after the reliability work.
+Status: implemented on the isolated 0.1.7 testing branch, not yet published.
+Hints use only verified game-definition area, season, and recipe-source facts.
+Unknown facts remain omitted and the category-level clue remains available.
 
 - Replace generic hints with category-specific facts from validated game data.
 - Example: an undiscovered fish can show a non-spoiling season and area such
   as `Pond · Summer`, rather than its name or exact spawn point.
 - Adapt the same principle to bugs, crops, artifacts, recipes, gifts, and
   other categories only after their reliable source data is verified.
+- Hidden gifts show only broad acquisition activity, not the gift's identity
+  or the villager's reaction.
 
 ## 6. Beginner-friendly installer
 

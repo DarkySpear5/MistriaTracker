@@ -2,6 +2,14 @@
 
 ## 0.1.7 — testing
 
+- Replaced generic undiscovered-item hints with verified area and season clues
+  for fish, bugs, crops, and forageables, plus broad find areas for artifacts.
+- Added recipe-acquisition clues only when confirmed by game definitions:
+  store, mail, quest, museum, random reward, or starting recipe.
+- Added spoiler-safe gift hints for the item's broad activity and any verified
+  season or area, without revealing its identity or the villager's reaction.
+- Localized the new hints in all eight supported Tracker languages. Missing
+  metadata omits the unsupported detail instead of guessing.
 - Added a unified language setting: Auto-detect or choose one language for both
   the Tracker interface and game catalog.
 - Added complete English, French, Spanish, Simplified Chinese, Traditional
