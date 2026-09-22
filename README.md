@@ -6,33 +6,44 @@ to write an isolated event log. It never edits a Fields of Mistria save file.
 
 ## Installation
 
-The desktop tracker and the game companion are separate:
+Download the latest Windows installer from the
+[official GitHub Releases page](https://github.com/DarkySpear5/MistriaTracker/releases/latest),
+then follow these steps:
 
-1. To track new discoveries while playing, install AIM or MOMI/Mods of Mistria
-   with compatible MMAPI hooks first.
-2. Run `MistriaTracker-0.1.5-setup.exe` and install it normally. Tick
-   **Add a desktop shortcut** if you want one.
-3. Leave **Live tracking companion (AIM/MOMI, recommended)** selected to
-   install live tracking. Setup finds normal Steam installs automatically. On
-   an unusual Steam location, choose the *Fields of Mistria game folder* (the
-   folder containing `assets.zip`), not its `mods` folder.
-4. Start Fields of Mistria through AIM or MOMI, then open Mistria Tracker.
-5. Load your character and change rooms once. The companion reports only the
+1. Close Fields of Mistria and run `MistriaTracker-0.1.5-setup.exe`.
+2. Leave **Live tracking companion (AIM/MOMI, recommended)** selected. The
+   installer uses Steam's library list to find default and custom libraries.
+   Only if automatic detection fails, choose the main *Fields of Mistria* game
+   folder containing `Maybe.toml`—not `assets.zip` and not the `mods` folder.
+3. The installer copies the Companion into the game's `mods` folder, but this
+   alone does not activate it. Open AIM and apply/rebuild the profile, or
+   download the latest Windows `ModsOfMistriaInstaller.exe` from the
+   [official MOMI Releases page](https://github.com/Garethp/Mods-of-Mistria-Installer/releases/latest),
+   run it, keep **Mistria Tracker Companion** checked, and click **Install**.
+   MOMI is portable: it does not remain installed or run beside the game.
+4. Launch Fields of Mistria normally through Steam, load your character, then
+   change rooms once. Open Mistria Tracker if it is not already running.
+5. The companion reports only the
    active save filename, and Tracker loads that exact character's name, farm,
    and approved existing discoveries from a temporary read-only copy. It then
    tracks new discoveries automatically while you play. If automatic detection
    is unavailable, Settings > **Load save file** remains a manual fallback.
 
+Run AIM's apply/rebuild action or MOMI's **Install** button again after every
+Fields of Mistria update and after replacing the Companion files.
+
 Save import is intentionally fail-closed: if the selected game version is not
 approved yet, Tracker reports that clearly and leaves both the save and tracker
 database unchanged.
 
-Tracker finds Fields of Mistria automatically in normal Steam libraries. If it
-cannot, open Settings and choose the game folder that contains `assets.zip`.
-Tracker does not change game files or saves.
+Tracker finds Fields of Mistria automatically in normal and custom Steam
+libraries. If it cannot, open Settings and choose the main game folder
+containing `Maybe.toml`. Tracker reads its local catalog but does not change
+game files or saves.
 
-AIM or MOMI is only needed for automatic active-save detection and live
-tracking. Without either one, Mistria Tracker can still import a supported save
+AIM or MOMI is needed to apply the Companion used for automatic active-save
+detection and live tracking. Neither tool needs to remain open while playing.
+Without an applied Companion, Mistria Tracker can still import a supported save
 through Settings > **Load save file** and show its local tracker data. The
 tracker never edits a Fields of Mistria save file.
 See the [complete MOMI installation and troubleshooting guide](docs/MOMI_INSTALL_GUIDE.md)
@@ -66,7 +77,14 @@ and [privacy policy](PRIVACY.md).
 
 ## Local development
 
+Before starting new work on `testing`, fetch the remote repository and
+fast-forward `testing` to the active `origin/main`. Do not build testing work
+on an older public release.
+
 ```powershell
+git fetch origin
+git switch testing
+git merge --ff-only origin/main
 pnpm test -- --run
 pnpm test:companion
 pnpm typecheck

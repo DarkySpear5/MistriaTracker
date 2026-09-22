@@ -65,6 +65,11 @@ fn preferences_value_uses_safe_normalized_tracker_preferences() {
 fn save_game_directory_rejects_a_folder_without_assets_zip() {
     let directory = tempdir().unwrap();
     let state = TrackerState::open(directory.path()).unwrap();
+    fs::write(
+        directory.path().join("Maybe.toml"),
+        "name = \"Fields of Mistria\"\nexecutable_name = \"FieldsOfMistria\"\n",
+    )
+    .unwrap();
 
     assert!(
         save_game_directory_value(&state, directory.path().to_string_lossy().as_ref()).is_err()

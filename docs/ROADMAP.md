@@ -1,11 +1,13 @@
 # Mistria Tracker Roadmap
 
-This roadmap tracks work after the 0.1.4 release. Every stage is
+This roadmap tracks work after the 0.1.5 reliability release. Every stage is
 read-only with respect to Fields of Mistria saves.
 
 ## 1. Security hardening — current priority
 
-Status: 0.1.5 hardening is in progress on the isolated release branch.
+Status: the 0.1.5 hardening is published. The testing branch is synchronized
+from the active main release before every new stage and receives a full test,
+build, and security scan before it is pushed.
 
 - Bound tracker-owned vault, snapshot, and companion-log reads so a
   malformed or unexpectedly large local input cannot exhaust memory.
@@ -15,10 +17,10 @@ Status: 0.1.5 hardening is in progress on the isolated release branch.
 
 ## 2. Reliable save import and live tracking — current
 
-Status: 0.1.5 removes automatic save-path guessing and adds an explicit,
-read-only `.sav` picker. Live tracking remains event-only through the
-companion log. Fields of Mistria 1.0.5 save import stays disabled until a
-disposable-save parser probe is approved.
+Status: 0.1.5 removes automatic save-path guessing, adds an explicit read-only
+`.sav` picker, and approves the narrow 1.0.5 import surface. Live tracking
+remains event-only through the Companion log. Older save versions remain
+blocked until separately verified.
 
 - Keep validated Steam-library discovery, bounded drive-root fallback, and one
   manual folder choice.
@@ -65,9 +67,11 @@ Status: future product design after the reliability work.
 
 ## 6. Beginner-friendly installer
 
-Status: 0.1.5 adds a validated companion destination, write preflight,
-required-file verification, and a clear failure message instead of an NSIS
-retry prompt. Linux/SteamOS packaging remains separate work.
+Status: the testing branch now reuses the app's Steam `libraryfolders.vdf`
+discovery, validates the game root with `Maybe.toml`, verifies both Companion
+files, and explains the required AIM/MOMI apply step. Linux/SteamOS packaging
+and a separately audited modern installer folder-picker dependency remain
+separate work.
 
 - Detect the validated game/mods folder automatically and offer the companion
   as a clearly labelled recommended live-tracking component.

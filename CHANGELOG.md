@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased — testing
+
+- Synchronized the testing branch with the complete published 0.1.5 code
+  before beginning new work.
+- Reused the Tracker's tested Steam `libraryfolders.vdf` discovery in the
+  Windows installer instead of maintaining a second hard-coded Steam search.
+- Normalized Steam registry, library, and fallback paths to native Windows
+  separators before the installer uses them.
+- Validated Fields of Mistria roots with `Maybe.toml` while keeping the local
+  catalog check internal; users are no longer told to locate `assets.zip`.
+- Added direct, beginner-friendly AIM/MOMI instructions after the Companion is
+  copied, including an optional link to MOMI's official Windows download.
+- Clarified that MOMI is portable, only applies/rebuilds mods, and does not
+  need to remain open while the game runs.
+- Added actionable guidance when an older save version is blocked: update that
+  character through the current game, then select the updated read-only save.
+- Corrected the GitHub README and installation guide to match the real
+  clean-machine setup flow.
+- Replaced the outdated 1.0.4 manual test instructions with a 1.0.5,
+  disposable-character-only checklist that never handles important saves.
+
 ## 0.1.5
 
 - Fixed the Windows installer so the optional AIM/MOMI companion is copied to

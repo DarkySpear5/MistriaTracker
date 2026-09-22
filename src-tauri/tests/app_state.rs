@@ -76,6 +76,11 @@ fn stale_saved_game_directory_falls_through_to_discovery() {
     let state = TrackerState::open(directory.path()).unwrap();
     let game = directory.path().join("Fields of Mistria");
     fs::create_dir(&game).unwrap();
+    fs::write(
+        game.join("Maybe.toml"),
+        "name = \"Fields of Mistria\"\nexecutable_name = \"FieldsOfMistria\"\n",
+    )
+    .unwrap();
     fs::write(game.join("assets.zip"), b"fixture assets").unwrap();
     state.save_game_directory(&game).unwrap();
     fs::remove_dir_all(&game).unwrap();

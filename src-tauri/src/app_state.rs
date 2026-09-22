@@ -44,7 +44,7 @@ pub enum TrackerStateError {
     GamePath(#[from] crate::safety::paths::GameSavePathError),
     #[error(transparent)]
     LogTail(#[from] LogTailError),
-    #[error("the selected Fields of Mistria folder must contain a readable assets.zip file")]
+    #[error("the selected folder is not a valid Fields of Mistria installation")]
     InvalidGameDirectory,
 }
 
@@ -224,7 +224,8 @@ impl TrackerState {
         ))
     }
 
-    /// Stores a game location only after opening its direct `assets.zip`.
+    /// Stores a game location only after validating its Fields of Mistria
+    /// signature and opening its direct local catalog.
     pub fn save_game_directory(&self, candidate: &Path) -> Result<PathBuf, TrackerStateError> {
         let game_directory =
             validate_game_directory(candidate).ok_or(TrackerStateError::InvalidGameDirectory)?;

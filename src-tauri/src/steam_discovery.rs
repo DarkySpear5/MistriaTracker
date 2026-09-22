@@ -1,8 +1,8 @@
 //! Read-only discovery of a normal Steam installation.
 //!
 //! The functions in this module never crawl drives, modify Steam configuration,
-//! or open game saves. A result is returned only after opening the game's direct
-//! `assets.zip` file.
+//! or open game saves. A result is returned only after validating the game's
+//! direct `Maybe.toml` signature and opening its local `assets.zip` catalog.
 
 use std::{
     fs::{self, File},
@@ -10,9 +10,9 @@ use std::{
 };
 
 pub const MISTRIA_APP_ID: &str = "2142790";
-const GAME_DIRECTORY_SEGMENTS: [&str; 4] =
-    ["steamapps", "common", "Fields of Mistria", "assets.zip"];
+const GAME_DIRECTORY_SEGMENTS: [&str; 3] = ["steamapps", "common", "Fields of Mistria"];
 const MAX_STEAM_TEXT_BYTES: u64 = 1024 * 1024;
+const MAX_GAME_SIGNATURE_BYTES: u64 = 64 * 1024;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DiscoveryResult {
@@ -47,11 +47,26 @@ impl DiscoverySources {
     }
 }
 
-/// Returns a canonical game directory only when its direct `assets.zip` can be
-/// opened as a regular file. This is the sole path form passed back to the UI.
+/// Returns a game directory only when `Maybe.toml` identifies Fields of
+/// Mistria and the local catalog is readable. The signature prevents an
+/// unrelated folder containing a file named `assets.zip` from being accepted.
 pub fn validate_game_directory(candidate: &Path) -> Option<PathBuf> {
     let game = fs::canonicalize(candidate).ok()?;
     if !fs::metadata(&game).ok()?.is_dir() {
+        return None;
+    }
+    let signature = game.join("Maybe.toml");
+    let signature_metadata = fs::metadata(&signature).ok()?;
+    if !signature_metadata.is_file() || signature_metadata.len() > MAX_GAME_SIGNATURE_BYTES {
+        return None;
+    }
+    let signature: toml::Value = toml::from_str(&fs::read_to_string(signature).ok()?).ok()?;
+    if signature.get("name").and_then(toml::Value::as_str) != Some("Fields of Mistria")
+        || signature
+            .get("executable_name")
+            .and_then(toml::Value::as_str)
+            != Some("FieldsOfMistria")
+    {
         return None;
     }
     let assets = game.join("assets.zip");
@@ -96,8 +111,8 @@ fn bounded_drive_candidates(roots: &[PathBuf]) -> impl Iterator<Item = PathBuf> 
         [
             root.join("SteamLibrary"),
             root.join("Steam"),
-            root.join("Program Files (x86)/Steam"),
-            root.join("Program Files/Steam"),
+            root.join("Program Files (x86)").join("Steam"),
+            root.join("Program Files").join("Steam"),
         ]
         .into_iter()
         .map(|steam_root| game_directory_for_library(&steam_root))
@@ -108,9 +123,6 @@ fn game_directory_for_library(library: &Path) -> PathBuf {
     GAME_DIRECTORY_SEGMENTS
         .iter()
         .fold(library.to_path_buf(), |path, segment| path.join(segment))
-        .parent()
-        .expect("game directory segments include assets.zip")
-        .to_path_buf()
 }
 
 fn has_mistria_manifest(library: &Path) -> bool {
@@ -137,8 +149,20 @@ fn parse_library_paths(contents: &str) -> Vec<PathBuf> {
     quoted
         .windows(2)
         .filter(|pair| pair[0].eq_ignore_ascii_case("path"))
-        .map(|pair| PathBuf::from(&pair[1]))
+        .map(|pair| normalize_steam_path(&pair[1]))
         .collect()
+}
+
+fn normalize_steam_path(value: &str) -> PathBuf {
+    #[cfg(windows)]
+    {
+        PathBuf::from(value.replace('/', "\\"))
+    }
+
+    #[cfg(not(windows))]
+    {
+        PathBuf::from(value)
+    }
 }
 
 fn quoted_vdf_values(contents: &str) -> Vec<String> {
@@ -174,7 +198,7 @@ fn registered_steam_root() -> Option<PathBuf> {
         .ok()?
         .get_value::<String, _>("SteamPath")
         .ok()
-        .map(PathBuf::from)
+        .map(|path| normalize_steam_path(&path))
 }
 
 #[cfg(not(windows))]
@@ -203,6 +227,11 @@ mod tests {
     fn fixture_game_directory(root: &Path, with_assets: bool) -> std::path::PathBuf {
         let game = root.join("steamapps/common/Fields of Mistria");
         fs::create_dir_all(&game).unwrap();
+        fs::write(
+            game.join("Maybe.toml"),
+            "name = \"Fields of Mistria\"\nexecutable_name = \"FieldsOfMistria\"\n",
+        )
+        .unwrap();
         if with_assets {
             fs::write(game.join("assets.zip"), b"fixture assets").unwrap();
         }
@@ -216,11 +245,26 @@ mod tests {
     }
 
     #[test]
-    fn accepts_only_a_directory_with_readable_assets_zip() {
+    fn accepts_only_the_signed_game_root_with_readable_assets() {
         let temporary = tempfile::tempdir().unwrap();
         let game = fixture_game_directory(temporary.path(), true);
 
+        let assets_only = temporary.path().join("assets-only");
+        fs::create_dir_all(&assets_only).unwrap();
+        fs::write(assets_only.join("assets.zip"), b"fixture assets").unwrap();
+
+        let wrong_signature = temporary.path().join("wrong-signature");
+        fs::create_dir_all(&wrong_signature).unwrap();
+        fs::write(wrong_signature.join("assets.zip"), b"fixture assets").unwrap();
+        fs::write(
+            wrong_signature.join("Maybe.toml"),
+            "name = \"A Different Game\"\nexecutable_name = \"DifferentGame\"\n",
+        )
+        .unwrap();
+
         assert_eq!(validate_game_directory(&game), Some(game));
+        assert_eq!(validate_game_directory(&assets_only), None);
+        assert_eq!(validate_game_directory(&wrong_signature), None);
         assert_eq!(
             validate_game_directory(&temporary.path().join("missing")),
             None
@@ -316,5 +360,25 @@ mod tests {
             parse_library_paths(r#""libraryfolders" { "1" { "path" "D:\\SteamLibrary" } }"#),
             vec![std::path::PathBuf::from(r"D:\SteamLibrary")]
         );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn normalizes_forward_slashes_from_windows_steam_configuration() {
+        assert_eq!(
+            normalize_steam_path("C:/Program Files (x86)/Steam"),
+            std::path::PathBuf::from(r"C:\Program Files (x86)\Steam")
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_fallback_candidates_use_native_separators() {
+        let candidates =
+            bounded_drive_candidates(&[std::path::PathBuf::from(r"C:\")]).collect::<Vec<_>>();
+
+        assert!(candidates
+            .iter()
+            .all(|candidate| !candidate.to_string_lossy().contains('/')));
     }
 }

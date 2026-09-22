@@ -1,16 +1,34 @@
 # Companion disposable-character checklist
 
-This checklist is required before declaring Fields of Mistria `1.0.4` compatible. Use only a newly created disposable character. Do not run this procedure against an important character.
+This checklist validates the approved Fields of Mistria `1.0.5` live-tracking
+surface. Use only a newly created disposable character. Do not open, copy,
+select, hash, move, or otherwise inspect an important save during this test.
 
 1. Close Fields of Mistria completely.
-2. Copy every `.sav` file to the tracker backup folder and create a SHA-256 manifest for those copies.
-3. Create a new disposable character and record its inventory plus the SHA-256 hash of its save.
-4. Install the companion through MOMI.
-5. With the disposable character, obtain one stackable item and one non-stackable item.
-6. Give one liked gift and one disliked gift.
-7. Donate one museum item.
-8. Close the game normally.
-9. With the companion disabled, compare inventory, toast behavior, relationship delta, museum state, and save parsing against the recorded expectations.
-10. Uninstall the companion, launch the game again, and confirm the disposable save loads.
+2. Run the Tracker installer and leave **Live tracking companion (AIM/MOMI,
+   recommended)** selected. Setup should find the Steam library automatically;
+   its manual fallback, if needed, selects the game root containing
+   `Maybe.toml`.
+3. Confirm that
+   `Fields of Mistria\mods\MistriaTrackerCompanion\manifest.json` and the
+   Companion GML file were copied.
+4. Apply/rebuild the active profile in AIM, or run the portable MOMI tool with
+   **Mistria Tracker Companion** checked and click **Install**. Close that tool
+   when it finishes.
+5. Launch the game normally through Steam, create or load only the disposable
+   character, and change rooms once.
+6. Confirm that Tracker identifies the disposable character and that its live
+   status becomes active.
+7. Obtain one stackable item and one non-stackable item, give one known gift,
+   and donate one museum item. Confirm each event appears once in Tracker.
+8. Return to the title menu. Confirm Tracker stops presenting the character as
+   currently active.
+9. Reload the disposable save without saving the previous session. Confirm
+   Tracker reconciles to the actual save state instead of retaining unsaved
+   discoveries.
+10. Close the game normally, remove only the Companion test folder if cleanup
+    is required, and confirm the disposable save still loads.
 
-Any mismatch is a stop condition: do not test an important character, retain the evidence and backup copies, and leave game version `1.0.4` marked `probe-required`.
+Any mismatch is a stop condition: do not test an important character, retain
+only tracker-owned logs and test notes, and leave the affected game version
+blocked until the failure is understood.

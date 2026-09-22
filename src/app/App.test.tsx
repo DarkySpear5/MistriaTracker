@@ -399,4 +399,45 @@ describe("Desktop journal", () => {
 
     await waitFor(() => expect(screen.getAllByText("Ari").length).toBeGreaterThan(0));
   });
+
+  it("explains how to refresh an older unsupported save without changing it", async () => {
+    vi.mocked(invoke).mockImplementation(async (command) => {
+      if (command === "get_preferences")
+        return { language_preference: "auto", effective_language: "eng", spoiler_mode: "free", hints_enabled: false };
+      if (command === "get_profile_summary")
+        return { active_profile: "ari", profiles: ["ari"] };
+      if (command === "get_journal_snapshot") return testJournal;
+      if (command === "prepare_journal") return;
+      throw new Error("Unexpected command " + command);
+    });
+
+    render(
+      <App
+        nativeRuntime={() => true}
+        resolveGameDirectory={async () => "C:/Test/Fields of Mistria"}
+        readinessProbe={async () => ({
+          catalog: { game_version: "verified", item_count: 3 },
+          catalog_approved: true,
+          companion_log_found: false,
+        })}
+        importExisting={async () => ({
+          status: "unsupported_version",
+          profile_id: "ari",
+          discovered_items: 0,
+          imported: false,
+          game_version: "0.14.4",
+        })}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getAllByText("Ari").length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Load save file" }));
+
+    expect(
+      await screen.findByText(
+        "Save version 0.14.4 is not approved for import. Open this character in the current Fields of Mistria version, save and close the game, then select the updated .sav file. Your original save was not changed.",
+      ),
+    ).toBeVisible();
+  });
 });

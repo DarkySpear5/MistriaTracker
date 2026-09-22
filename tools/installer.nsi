@@ -1,8 +1,5 @@
 Unicode true
 !include "Sections.nsh"
-!include "StrFunc.nsh"
-
-${StrRep}
 
 Name "Mistria Tracker"
 Icon "..\src-tauri\icons\icon.ico"
@@ -24,41 +21,6 @@ ShowUnInstDetails show
 Var GameDirectory
 Var CompanionTarget
 
-; Check only known Steam locations. This never scans folders recursively and a
-; candidate is accepted only if it contains Fields of Mistria's assets.zip.
-Function FindGameDirectory
-  StrCpy $GameDirectory ""
-  ReadRegStr $R0 HKCU "Software\\Valve\\Steam" "SteamPath"
-  ; Steam commonly stores this value with forward slashes. Normalize it before
-  ; appending Windows paths so NSIS receives one canonical destination format.
-  ${StrRep} $R0 $R0 "/" "\\"
-  IfFileExists "$R0\\steamapps\\common\\Fields of Mistria\\assets.zip" steam_root_found
-
-  ; Check the common Steam and SteamLibrary folders on mounted C: through Z:
-  ; drives. Unusual library names use the one-time fallback picker below.
-  StrCpy $R1 67
-  find_drive:
-  IntFmt $R2 "%c" $R1
-  StrCpy $R0 "$R2:\\SteamLibrary\\steamapps\\common\\Fields of Mistria"
-  IfFileExists "$R0\\assets.zip" drive_found
-  StrCpy $R0 "$R2:\\Steam\\steamapps\\common\\Fields of Mistria"
-  IfFileExists "$R0\\assets.zip" drive_found
-  StrCpy $R0 "$R2:\\Program Files (x86)\\Steam\\steamapps\\common\\Fields of Mistria"
-  IfFileExists "$R0\\assets.zip" drive_found
-  StrCpy $R0 "$R2:\\Program Files\\Steam\\steamapps\\common\\Fields of Mistria"
-  IfFileExists "$R0\\assets.zip" drive_found
-  IntOp $R1 $R1 + 1
-  IntCmp $R1 91 find_drive find_done find_done
-
-  steam_root_found:
-  StrCpy $GameDirectory "$R0\\steamapps\\common\\Fields of Mistria"
-  Return
-
-  drive_found:
-  StrCpy $GameDirectory "$R0"
-  find_done:
-FunctionEnd
-
 Page components
 Page directory
 Page instfiles
@@ -79,19 +41,30 @@ Section /o "Add a desktop shortcut" SecDesktopShortcut
 SectionEnd
 
 Section /o "Live tracking companion (AIM/MOMI, recommended)" SecCompanion
-  StrCmp $GameDirectory "" choose_game_folder game_directory_ready
+  ; Reuse the app's bounded, tested Steam libraryfolders.vdf discovery instead
+  ; of maintaining a second hard-coded installer search.
+  StrCpy $GameDirectory ""
+  ClearErrors
+  nsExec::ExecToStack '"$INSTDIR\\mistria-tracker.exe" --print-game-directory'
+  Pop $R0
+  Pop $GameDirectory
+  StrCmp $R0 "0" game_directory_ready
+  StrCpy $GameDirectory ""
+  Goto choose_game_folder
 
   choose_game_folder:
-  nsDialogs::SelectFolderDialog "Fields of Mistria was not found automatically. Choose the game folder that contains assets.zip." "$PROGRAMFILES"
+  nsDialogs::SelectFolderDialog "Fields of Mistria was not found automatically. Choose the Fields of Mistria game folder." "$PROGRAMFILES"
   Pop $GameDirectory
   StrCmp $GameDirectory "error" companion_skipped
   StrCmp $GameDirectory "" companion_skipped
 
   game_directory_ready:
+  IfFileExists "$GameDirectory\\Maybe.toml" game_signature_found companion_invalid_folder
+  game_signature_found:
   IfFileExists "$GameDirectory\\assets.zip" companion_install companion_invalid_folder
 
   companion_invalid_folder:
-  MessageBox MB_ICONEXCLAMATION "The selected folder does not contain Fields of Mistria's assets.zip. The tracker was installed, but the companion was skipped. Run setup again after choosing the game's folder."
+  MessageBox MB_ICONEXCLAMATION "The selected folder is not a valid Fields of Mistria installation. Choose the main game folder containing Maybe.toml. The Tracker app was installed, but the Companion was skipped."
   Goto companion_skipped
 
   companion_install:
@@ -113,7 +86,9 @@ Section /o "Live tracking companion (AIM/MOMI, recommended)" SecCompanion
   IfFileExists "$CompanionTarget\\gml\\MistriaTrackerCompanion.gml" companion_installed companion_failed
 
   companion_installed:
-  MessageBox MB_ICONINFORMATION "The live-tracking companion files were installed.$\r$\n$\r$\nOpen AIM or MOMI and apply/rebuild your mods once before starting Fields of Mistria."
+  MessageBox MB_ICONINFORMATION|MB_YESNO "The live-tracking Companion files were copied successfully.$\r$\n$\r$\nThey are not active yet. Open AIM or run MOMI and click Install/Apply once before launching Fields of Mistria. Repeat this after every game update.$\r$\n$\r$\nMOMI is a portable tool; it does not stay installed or run with the game.$\r$\n$\r$\nOpen the official MOMI download page now?" IDYES open_momi IDNO companion_skipped
+  open_momi:
+  ExecShell "open" "https://github.com/Garethp/Mods-of-Mistria-Installer/releases/latest"
   Goto companion_skipped
 
   companion_failed:
@@ -123,11 +98,8 @@ Section /o "Live tracking companion (AIM/MOMI, recommended)" SecCompanion
 SectionEnd
 
 Function .onInit
-  Call FindGameDirectory
   SectionSetFlags ${SecDesktopShortcut} ${SF_SELECTED}
-  StrCmp $GameDirectory "" game_not_found
   SectionSetFlags ${SecCompanion} ${SF_SELECTED}
-  game_not_found:
 FunctionEnd
 
 Section "Uninstall"

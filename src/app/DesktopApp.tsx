@@ -521,8 +521,8 @@ export function DesktopApp({
                             if (result.status === "unsupported_version") {
                               setSaveImportMessage(
                                 language === "fra"
-                                  ? `La version ${result.game_version ?? ""} n’est pas encore approuvée pour l’import des sauvegardes.`
-                                  : `Save version ${result.game_version ?? ""} is not approved for import yet.`,
+                                  ? `La version ${result.game_version ?? ""} n’est pas approuvée pour l’import. Ouvrez ce personnage dans la version actuelle de Fields of Mistria, sauvegardez, fermez le jeu, puis sélectionnez le fichier .sav mis à jour. Votre sauvegarde originale n’a pas été modifiée.`
+                                  : `Save version ${result.game_version ?? ""} is not approved for import. Open this character in the current Fields of Mistria version, save and close the game, then select the updated .sav file. Your original save was not changed.`,
                               );
                               return;
                             }

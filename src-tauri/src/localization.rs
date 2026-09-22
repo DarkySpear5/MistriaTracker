@@ -157,6 +157,11 @@ mod tests {
         let temporary = tempfile::tempdir().unwrap();
         let game = temporary.path().join("steamapps/common/Fields of Mistria");
         fs::create_dir_all(&game).unwrap();
+        fs::write(
+            game.join("Maybe.toml"),
+            "name = \"Fields of Mistria\"\nexecutable_name = \"FieldsOfMistria\"\n",
+        )
+        .unwrap();
         fs::write(game.join("assets.zip"), b"fixture assets").unwrap();
         fs::write(
             temporary.path().join("steamapps/appmanifest_2142790.acf"),
