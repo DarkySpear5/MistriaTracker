@@ -1,5 +1,9 @@
 # Spoiler-safe Hints Implementation Plan
 
+Status: implemented and locally verified on `testing` through `f0ab806`.
+The checkboxes below preserve the original execution plan; the current
+verification record is in the paired context pack. Publication is not approved.
+
 > **For agentic workers:** Implement these tasks in order on the existing `testing` worktree. Each task ends with a focused verification and a small commit.
 
 **Goal:** Give undiscovered fish, bugs, crops, forageables, artifacts, recipes, and gifts useful hints based on verified game metadata without revealing identities.

@@ -3,9 +3,10 @@
 ## Branch and preservation
 
 Use the linked worktree `.worktrees/tracker-testing` on `testing`. At planning
-time, `testing`, `origin/testing`, and public `origin/main` all resolve to
-`02f30b1`. The linked worktree contains uncommitted 0.1.7 language work; keep
-it intact and commit it separately before hint code. `tools/installer/` is
+time, `testing`, `origin/testing`, and public `origin/main` all resolved to
+`02f30b1`. The 0.1.7 language work and hint implementation are now committed
+locally on `testing` through `f0ab806`; public `origin/main` is still
+`02f30b1`. `tools/installer/` is
 pre-existing untracked output and must not be staged. The local branch called
 `master` is an unrelated documentation-only history; do not merge it into this
 app branch. No push, merge, updater, installer build, or release is part of
@@ -15,20 +16,21 @@ this work.
 
 - `src-tauri/src/journal/catalog.rs` extracts entries from bounded TOML in
   `assets.zip`; `Entry` holds seasons, places, recipe links, and translations.
-- `src-tauri/src/journal/view.rs` applies the spoiler boundary and currently
-  emits a generic string `hint` for each hidden entry. Hidden gift slots use
-  the same generic `gift` string in the frontend.
+- `src-tauri/src/journal/hints.rs` derives whitelisted area, season, and
+  recipe-source facts. `view.rs` applies the spoiler boundary and emits typed
+  hint codes. Untried gifts live in a neutral group, not Loved or Liked.
 - `src/journal/screens.tsx` calls `onHint` when a hidden slot is clicked;
   `src/app/DesktopApp.tsx` renders the modal. `src/i18n/registry.ts` has eight
   locale dictionaries and one unified language selection.
-- `src-tauri/src/journal/tests.rs` already verifies that hidden names and
-  detailed locations do not appear in the snapshot.
+- `src-tauri/src/journal/tests.rs` verifies that hidden names, detailed
+  locations, and untried gift reactions do not appear in the snapshot.
 
 ## Verified installed-game definition shapes
 
 - `fish.toml`: `seasons` may be false or an array; `water_type` and `retrieval`
   may be scalars or arrays; `locations` can identify the deep woods. Mines
-  retrieval must outrank default river water type.
+  retrieval must outrank default river water type. Trap-only retrieval also
+  must not inherit default river; its exact area is left unspecified.
 - `bugs.toml`: `default.seasons` lists all seasons; per-bug `tag` can indicate
   beach, deep woods, or mines; `dungeon_biome` identifies a mine region.
 - `object_prototypes/crop.toml`: `seasons` is a string, array, or default -1.
@@ -47,3 +49,13 @@ this work.
 Only finite, translated codes cross the Rust-to-UI hint boundary. Raw game
 names, IDs, paths, prose descriptions, and exact spawn data are not hint
 payloads. Missing or conflicting evidence falls back to a general clue.
+
+## Local verification and next gate
+
+- Rust suite: 96 library tests passed, integration tests passed.
+- Frontend: 99 tests passed across 17 files, and the production UI build passed.
+- Read-only installed-archive probe: all six target categories have verified
+  hints; `blue_crab` does not receive a false River clue.
+- No installer, push, merge, updater, or public release was produced. Human
+  language review and a manual disposable-character UI check remain before
+  any future release decision.
