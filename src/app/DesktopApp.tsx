@@ -28,6 +28,7 @@ import type { SearchResult } from "../journal/search";
 import { tr } from "../journal/copy";
 import {
   languageDictionary,
+  localeOptions,
   type LanguagePreference,
 } from "../i18n";
 import {
@@ -212,9 +213,7 @@ export function DesktopApp({
     if (
       dirtyNote.current &&
       !window.confirm(
-        language === "fra"
-          ? "Quitter sans enregistrer la note ?"
-          : "Leave without saving this note?",
+        tr(language, "leaveWithoutSaving"),
       )
     )
       return false;
@@ -340,7 +339,7 @@ export function DesktopApp({
     <ArtworkProvider loader={artLoader} scope={scope}>
       <div className="desktop-shell">
         <a className="skip-link" href="#content">
-          {language === "fra" ? "Aller au contenu" : "Skip to content"}
+          {tr(language, "skipToContent")}
         </a>
         <aside className="sidebar">
           <div className="brand">
@@ -348,11 +347,11 @@ export function DesktopApp({
               <Icon name="moon" size={25} />
             </div>
             <div>
-              Mistria<span>JOURNAL & TRACKER</span>
+              Mistria<span>{tr(language, "brandTagline")}</span>
             </div>
           </div>
           <div className="sidebar-divider" />
-          <nav aria-label="Tracker navigation">
+          <nav aria-label={tr(language, "trackerNavigation")}>
             {(
               ["overview", "museum", "villagers", "encyclopedia"] as View[]
             ).map((tab) => (
@@ -421,13 +420,7 @@ export function DesktopApp({
                 <div className="notice" role="status">
                   <Icon name="info" size={16} />
                   <span>
-                    {language === "fra"
-                      ? error === "game-directory"
-                        ? "Le dossier de Fields of Mistria est introuvable. Ouvrez Réglages pour le choisir."
-                        : "Certaines données n’ont pas pu être actualisées. Vos découvertes enregistrées restent conservées."
-                      : error === "game-directory"
-                        ? "Fields of Mistria could not be found. Open Settings to choose its folder."
-                        : "Some data could not be refreshed. Your saved discoveries are preserved."}
+                    {tr(language, error === "game-directory" ? "gameFolderNotFound" : "refreshPreserved")}
                   </span>
                   <button onClick={() => void initializeRef.current()}>
                     {tr(language, "retry")}
@@ -492,18 +485,15 @@ export function DesktopApp({
                       >
                         {languageCopy.autoDetect}
                       </button>
-                      <button
-                        aria-pressed={languagePreference === "eng"}
-                        onClick={() => void persist("eng", spoilers, hints)}
-                      >
-                        {languageCopy.english}
-                      </button>
-                      <button
-                        aria-pressed={languagePreference === "fra"}
-                        onClick={() => void persist("fra", spoilers, hints)}
-                      >
-                        {languageCopy.french}
-                      </button>
+                      {localeOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          aria-pressed={languagePreference === option.value}
+                          onClick={() => void persist(option.value, spoilers, hints)}
+                        >
+                          {languageCopy[option.label]}
+                        </button>
+                      ))}
                     </div>
                   </div>
                   <div className="settings-card">
@@ -520,21 +510,11 @@ export function DesktopApp({
                             if (!result) return;
                             if (result.status === "unsupported_version") {
                               setSaveImportMessage(
-                                language === "fra"
-                                  ? `La version ${result.game_version ?? ""} n’est pas approuvée pour l’import. Ouvrez ce personnage dans la version actuelle de Fields of Mistria, sauvegardez, fermez le jeu, puis sélectionnez le fichier .sav mis à jour. Votre sauvegarde originale n’a pas été modifiée.`
-                                  : `Save version ${result.game_version ?? ""} is not approved for import. Open this character in the current Fields of Mistria version, save and close the game, then select the updated .sav file. Your original save was not changed.`,
+                                tr(language, "unsupportedSaveVersion", { version: result.game_version ?? "" }),
                               );
                               return;
                             }
-                            setSaveImportMessage(
-                              language === "fra"
-                                ? result.imported
-                                  ? `${result.discovered_items} découvertes importées.`
-                                  : `${result.discovered_items} découvertes étaient déjà importées.`
-                                : result.imported
-                                  ? `${result.discovered_items} discoveries imported.`
-                                  : `${result.discovered_items} discoveries were already imported.`,
-                            );
+                            setSaveImportMessage(tr(language, result.imported ? "importedDiscoveries" : "alreadyImportedDiscoveries", { count: String(result.discovered_items) }));
                             await refresh();
                           })
                           .catch(() => setError("import"))
@@ -551,24 +531,14 @@ export function DesktopApp({
                   </div>
                   {!gameDirectory && native && (
                     <div className="settings-card">
-                      <h2>
-                        {language === "fra"
-                          ? "Dossier du jeu"
-                          : "Game folder"}
-                      </h2>
-                      <p>
-                        {language === "fra"
-                          ? "Le suivi cherche normalement le jeu automatiquement."
-                          : "Tracker normally finds the game automatically."}
-                      </p>
+                      <h2>{tr(language, "gameFolderTitle")}</h2>
+                      <p>{tr(language, "gameFolderHelp")}</p>
                       <button
                         className="secondary-button"
                         disabled={busy}
                         onClick={() => void chooseGameDirectoryAndRestart()}
                       >
-                        {language === "fra"
-                          ? "Choisir le dossier de Fields of Mistria"
-                          : "Choose Fields of Mistria folder"}
+                        {tr(language, "chooseGameFolder")}
                       </button>
                     </div>
                   )}

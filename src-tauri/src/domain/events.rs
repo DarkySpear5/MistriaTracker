@@ -55,6 +55,27 @@ pub enum GiftReaction {
 pub enum Language {
     Eng,
     Fra,
+    Spa,
+    Chs,
+    Cht,
+    Jpn,
+    Kor,
+    Rus,
+}
+
+impl Language {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Eng => "eng",
+            Self::Fra => "fra",
+            Self::Spa => "spa",
+            Self::Chs => "chs",
+            Self::Cht => "cht",
+            Self::Jpn => "jpn",
+            Self::Kor => "kor",
+            Self::Rus => "rus",
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]

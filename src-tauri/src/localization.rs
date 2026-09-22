@@ -25,6 +25,12 @@ impl Serialize for LanguagePreference {
             Self::Auto => "auto",
             Self::Manual(Language::Eng) => "eng",
             Self::Manual(Language::Fra) => "fra",
+            Self::Manual(Language::Spa) => "spa",
+            Self::Manual(Language::Chs) => "chs",
+            Self::Manual(Language::Cht) => "cht",
+            Self::Manual(Language::Jpn) => "jpn",
+            Self::Manual(Language::Kor) => "kor",
+            Self::Manual(Language::Rus) => "rus",
         })
     }
 }
@@ -38,6 +44,12 @@ impl<'de> Deserialize<'de> for LanguagePreference {
             "auto" => Ok(Self::Auto),
             "eng" => Ok(Self::Manual(Language::Eng)),
             "fra" => Ok(Self::Manual(Language::Fra)),
+            "spa" => Ok(Self::Manual(Language::Spa)),
+            "chs" => Ok(Self::Manual(Language::Chs)),
+            "cht" => Ok(Self::Manual(Language::Cht)),
+            "jpn" => Ok(Self::Manual(Language::Jpn)),
+            "kor" => Ok(Self::Manual(Language::Kor)),
+            "rus" => Ok(Self::Manual(Language::Rus)),
             _ => Err(serde::de::Error::custom(
                 "unsupported tracker language preference",
             )),
@@ -69,6 +81,12 @@ fn steam_manifest_language(game_directory: Option<&Path>) -> Option<Language> {
     match user_config_language(&contents)?.as_str() {
         "english" => Some(Language::Eng),
         "french" => Some(Language::Fra),
+        "spanish" => Some(Language::Spa),
+        "schinese" => Some(Language::Chs),
+        "tchinese" => Some(Language::Cht),
+        "japanese" => Some(Language::Jpn),
+        "koreana" => Some(Language::Kor),
+        "russian" => Some(Language::Rus),
         _ => None,
     }
 }

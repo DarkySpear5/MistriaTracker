@@ -22,12 +22,8 @@ impl CatalogItem {
         icon_sprite: Option<String>,
         seasons: Vec<String>,
         locations: Vec<LocationTag>,
-        english: LocalizedItemText,
-        french: LocalizedItemText,
+        text: BTreeMap<String, LocalizedItemText>,
     ) -> Self {
-        let mut text = BTreeMap::new();
-        text.insert("eng".to_owned(), english);
-        text.insert("fra".to_owned(), french);
         Self {
             id,
             icon_sprite,

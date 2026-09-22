@@ -35,14 +35,18 @@ blocked until separately verified.
 
 ## 3. Unified language support
 
-Status: design approved; implementation follows the 0.1.5 reliability patch.
+Status: 0.1.7 testing implementation adds complete interface dictionaries and
+game-catalog extraction for all eight planned languages. It remains on the
+testing branch pending language review.
 
 - One language choice only: **Auto-detect** or one manual language.
 - The choice controls both Tracker controls and extracted game catalog text.
-- Start with English, Simplified Chinese, Traditional Chinese, French,
-  Japanese, Korean, Russian, and Spanish, each with safe English fallback.
-- Make the translation structure extensible without exposing unfinished
-  languages to players.
+- Auto-detect the installed game language or let the player choose one language
+  for both Tracker UI and game-content text: English, Simplified Chinese,
+  Traditional Chinese, French, Japanese, Korean, Russian, or Spanish.
+- Keep English fallback for missing game/catalog translations and do not expose
+  incomplete interface locales.
+- Add additional complete official game locales in later testing stages.
 
 ## 4. GitHub update delivery
 

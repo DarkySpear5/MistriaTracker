@@ -84,10 +84,7 @@ impl SpoilerPolicy {
     ) -> AppSnapshot {
         let mut items = Vec::new();
         let mut completed = 0;
-        let language = match language {
-            Language::Eng => "eng",
-            Language::Fra => "fra",
-        };
+        let language = language.as_str();
         for item in catalog.items() {
             let discovered = progress.item_is_discovered(&item.id);
             if discovered {

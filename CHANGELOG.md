@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.7 — testing
+
+- Added a unified language setting: Auto-detect or choose one language for both
+  the Tracker interface and game catalog.
+- Added complete English, French, Spanish, Simplified Chinese, Traditional
+  Chinese, Japanese, Korean, and Russian interface dictionaries, with
+  English fallback for missing translations.
+- Auto-detect recognizes all supported Fields of Mistria languages from
+  Steam's language setting.
+- Extracts each locale's names and descriptions from game translation metadata
+  for the catalog, museum sets, and villagers; missing game text safely falls
+  back to English.
+- Centralized interface text so additional complete languages can be added
+  without editing individual screens.
+
 ## 0.1.6 — 2026-09-22
 
 - Reused the Tracker's tested Steam `libraryfolders.vdf` discovery in the

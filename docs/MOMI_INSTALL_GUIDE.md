@@ -94,7 +94,10 @@ Never delete, move, or overwrite a save to troubleshoot the tracker.
 ## Spoiler and language settings
 
 Spoiler-free mode is the default. Unknown entries remain hidden until observed.
-Use Settings to switch to “Show everything” or choose English/French.
+Use Settings to switch to “Show everything” or choose Auto-detect, English,
+French, Spanish, Simplified Chinese, Traditional Chinese, Japanese, Korean, or
+Russian. The selected language applies to both the Tracker interface and
+available game catalog text; missing translations fall back to English.
 
 ## If live tracking is paused
 

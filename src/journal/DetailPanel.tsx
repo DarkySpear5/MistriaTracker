@@ -64,11 +64,7 @@ export function DetailPanel({
   const close = () => {
     if (
       note !== saved &&
-      !window.confirm(
-        language === "fra"
-          ? "Fermer sans enregistrer la note ?"
-          : "Close without saving this note?",
-      )
+      !window.confirm(tr(language, "closeWithoutSaving"))
     )
       return;
     onClose();

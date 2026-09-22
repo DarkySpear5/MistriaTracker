@@ -1,13 +1,9 @@
 import { useEffect, useState } from 'react';
 import { NoteEditor } from '../notes/NoteEditor';
+import type { Language } from '../../journal/types';
+import { tr } from '../../journal/copy';
 
 type Item = { id: string; name: string; description: string; icon_sprite?: string | null; seasons: string[]; locations: string[] };
-type Language = 'eng' | 'fra';
-
-const copy = {
-  eng: { eyebrow: 'ITEMS', title: 'Item tracker', sort: 'Sort visible items', name: 'Name', season: 'Season', place: 'Place', previous: 'Previous items', next: 'More items' },
-  fra: { eyebrow: 'OBJETS', title: 'Suivi des objets', sort: 'Trier les objets visibles', name: 'Nom', season: 'Saison', place: 'Lieu', previous: 'Objets précédents', next: 'Plus d’objets' },
-} as const;
 
 const ITEMS_PER_PAGE = 12;
 const ICON_CONCURRENCY = 2;
@@ -23,7 +19,16 @@ type Props = {
 };
 
 export function ItemsPage({ items, language = 'eng', loadIcon, notes = {}, onSaveNote, onSelectItem, query = '' }: Props) {
-  const text = copy[language];
+  const text = {
+    eyebrow: tr(language, 'itemsEyebrow'),
+    title: tr(language, 'itemsTitle'),
+    sort: tr(language, 'sortVisibleItems'),
+    name: tr(language, 'name'),
+    season: tr(language, 'season'),
+    place: tr(language, 'place'),
+    previous: tr(language, 'previousItems'),
+    next: tr(language, 'moreItems'),
+  };
   const [season, setSeason] = useState<string>();
   const [location, setLocation] = useState<string>();
   const [selectedItemId, setSelectedItemId] = useState<string>();
@@ -90,7 +95,7 @@ export function ItemsPage({ items, language = 'eng', loadIcon, notes = {}, onSav
         </button>
       </article>)}
     </div>
-    {totalPages > 1 && <div className="filter-row" aria-label="Item pages">
+    {totalPages > 1 && <div className="filter-row" aria-label={tr(language, 'itemPages')}>
       <button disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} type="button">{text.previous}</button>
       <button disabled={currentPage + 1 === totalPages} onClick={() => setPage(currentPage + 1)} type="button">{text.next}</button>
     </div>}
@@ -98,7 +103,7 @@ export function ItemsPage({ items, language = 'eng', loadIcon, notes = {}, onSav
       {icons[selectedItem.id] && <img alt="" className="item-detail-icon" src={icons[selectedItem.id]} />}
       <h3>{selectedItem.name}</h3>
       <p>{selectedItem.description}</p>
-      {onSaveNote && <NoteEditor key={selectedItem.id} initialValue={notes[selectedItem.id] ?? ''} onSave={(text) => onSaveNote(selectedItem.id, text)} />}
+      {onSaveNote && <NoteEditor key={selectedItem.id} initialValue={notes[selectedItem.id] ?? ''} language={language} onSave={(text) => onSaveNote(selectedItem.id, text)} />}
     </article>}
   </section>;
 }

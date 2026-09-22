@@ -10,7 +10,7 @@ Download the latest Windows installer from the
 [official GitHub Releases page](https://github.com/DarkySpear5/MistriaTracker/releases/latest),
 then follow these steps:
 
-1. Close Fields of Mistria and run `MistriaTracker-0.1.6-setup.exe`.
+1. Close Fields of Mistria and run `MistriaTracker-0.1.7-setup.exe`.
 2. Leave **Live tracking companion (AIM/MOMI, recommended)** selected. The
    installer uses Steam's library list to find default and custom libraries.
    Only if automatic detection fails, choose the main *Fields of Mistria* game
@@ -40,6 +40,13 @@ Tracker finds Fields of Mistria automatically in normal and custom Steam
 libraries. If it cannot, open Settings and choose the main game folder
 containing `Maybe.toml`. Tracker reads its local catalog but does not change
 game files or saves.
+
+Tracker language defaults to **Auto-detect**, matching the language selected for
+Fields of Mistria in Steam. English, French, Spanish, Simplified Chinese,
+Traditional Chinese, Japanese, Korean, and Russian are available for the
+interface; supported game text follows the same selection. Missing translations
+safely fall back to English. You can choose a different language in Settings,
+and that single choice applies to both.
 
 AIM or MOMI is needed to apply the Companion used for automatic active-save
 detection and live tracking. Neither tool needs to remain open while playing.

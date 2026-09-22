@@ -1,13 +1,13 @@
-type Villager = { id: string; name: string; gifts: { item: string; reaction: string }[] };
-type Language = 'eng' | 'fra';
+import type { Language } from '../../journal/types';
+import { tr } from '../../journal/copy';
 
-const copy = {
-  eng: { eyebrow: 'VILLAGERS', title: 'Villagers' },
-  fra: { eyebrow: 'VILLAGEOIS', title: 'Villageois' },
-} as const;
+type Villager = { id: string; name: string; gifts: { item: string; reaction: string }[] };
 
 export function VillagersPage({ villagers, language = 'eng', query = '' }: { villagers: Villager[]; language?: Language; query?: string }) {
-  const text = copy[language];
+  const text = {
+    eyebrow: tr(language, 'villagersEyebrow'),
+    title: tr(language, 'villagersTitle'),
+  };
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const visible = villagers.filter((villager) =>
     !normalizedQuery

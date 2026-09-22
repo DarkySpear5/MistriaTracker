@@ -14,7 +14,7 @@ use std::{
 use zip::ZipArchive;
 
 const ITEM_PREFIX: &str = "assets/fiddle/items/";
-const FRENCH_TRANSLATIONS: &str = "assets/localization/translations/fra.meta.toml";
+const TRANSLATION_PREFIX: &str = "assets/localization/translations/";
 const VERSION_METADATA: &str = "assets/fiddle/fiddle.meta.toml";
 const MAX_SOURCE_ENTRY_BYTES: u64 = 4 * 1024 * 1024;
 const MAX_TRANSLATION_ENTRY_BYTES: u64 = 8 * 1024 * 1024;
@@ -77,7 +77,7 @@ impl CatalogExtractor {
     pub fn extract(source: &AssetsZip, _cache: &CatalogCacheDir) -> Result<Catalog, CatalogError> {
         let mut archive = source.open()?;
         let mut item_sources = Vec::new();
-        let mut french = None;
+        let mut translation_sources = BTreeMap::new();
         let mut version = None;
 
         for index in 0..archive.len() {
@@ -91,13 +91,14 @@ impl CatalogExtractor {
                     "archive contains an unsafe path",
                 ));
             }
+            let translation_locale = translation_locale(&name);
             if !(name.starts_with(ITEM_PREFIX) && name.ends_with(".toml")
-                || name == FRENCH_TRANSLATIONS
+                || translation_locale.is_some()
                 || name == VERSION_METADATA)
             {
                 continue;
             }
-            let maximum_bytes = if name == FRENCH_TRANSLATIONS {
+            let maximum_bytes = if translation_locale.is_some() {
                 MAX_TRANSLATION_ENTRY_BYTES
             } else {
                 MAX_SOURCE_ENTRY_BYTES
@@ -105,15 +106,18 @@ impl CatalogExtractor {
             let content = read_entry(&mut entry, maximum_bytes)?;
             if name.starts_with(ITEM_PREFIX) {
                 item_sources.push((name, content));
-            } else if name == FRENCH_TRANSLATIONS {
-                french = Some(content);
+            } else if let Some(locale) = translation_locale {
+                translation_sources.insert(locale.to_owned(), content);
             } else {
                 version = Some(content);
             }
         }
 
-        let version = parse_version(version.as_deref(), &item_sources, french.as_deref())?;
-        let translations = parse_translations(french.as_deref())?;
+        let translations = translation_sources
+            .iter()
+            .map(|(locale, source)| Ok((locale.clone(), parse_translations(Some(source))?)))
+            .collect::<Result<BTreeMap<_, _>, CatalogError>>()?;
+        let version = parse_version(version.as_deref(), &item_sources, &translation_sources)?;
         let mut seen = BTreeSet::new();
         let mut items = Vec::new();
         for (path, source) in item_sources {
@@ -152,10 +156,10 @@ fn read_entry(
 fn parse_version(
     source: Option<&str>,
     item_sources: &[(String, String)],
-    french: Option<&str>,
+    translations: &BTreeMap<String, String>,
 ) -> Result<String, CatalogError> {
     let Some(source) = source else {
-        return Ok(catalog_fingerprint(item_sources, french));
+        return Ok(catalog_fingerprint(item_sources, translations));
     };
     let document = toml::from_str::<toml::Value>(source)?;
     Ok(document
@@ -163,18 +167,24 @@ fn parse_version(
         .and_then(toml::Value::as_str)
         .filter(|value| !value.is_empty())
         .map(str::to_owned)
-        .unwrap_or_else(|| catalog_fingerprint(item_sources, french)))
+        .unwrap_or_else(|| catalog_fingerprint(item_sources, translations)))
 }
 
-fn catalog_fingerprint(item_sources: &[(String, String)], french: Option<&str>) -> String {
+fn catalog_fingerprint(
+    item_sources: &[(String, String)],
+    translations: &BTreeMap<String, String>,
+) -> String {
     let mut entries = item_sources
         .iter()
-        .map(|(path, content)| (path.as_str(), content.as_bytes()))
+        .map(|(path, content)| (path.clone(), content.as_bytes()))
         .collect::<Vec<_>>();
-    if let Some(content) = french {
-        entries.push((FRENCH_TRANSLATIONS, content.as_bytes()));
+    for (locale, content) in translations {
+        entries.push((
+            format!("{TRANSLATION_PREFIX}{locale}.meta.toml"),
+            content.as_bytes(),
+        ));
     }
-    entries.sort_by_key(|(path, _)| *path);
+    entries.sort_by(|left, right| left.0.cmp(&right.0));
     let mut digest = Sha256::new();
     for (path, content) in entries {
         digest.update(path.as_bytes());
@@ -245,7 +255,7 @@ fn parse_flat_translations(
 
 fn parse_items(
     source: &str,
-    translations: &BTreeMap<String, Translation>,
+    translations: &BTreeMap<String, BTreeMap<String, Translation>>,
     fallback_locations: Vec<LocationTag>,
 ) -> Result<Vec<CatalogItem>, CatalogError> {
     let document = toml::from_str::<toml::Value>(source)?;
@@ -258,14 +268,7 @@ fn parse_items(
         ))?;
     tables
         .iter()
-        .map(|(key, value)| {
-            parse_item(
-                key,
-                value,
-                translations.get(key),
-                fallback_locations.clone(),
-            )
-        })
+        .map(|(key, value)| parse_item(key, value, translations, fallback_locations.clone()))
         .collect::<Result<Vec<_>, _>>()
         .map(|items| items.into_iter().flatten().collect())
 }
@@ -273,7 +276,7 @@ fn parse_items(
 fn parse_item(
     key: &str,
     value: &toml::Value,
-    translation: Option<&Translation>,
+    translations: &BTreeMap<String, BTreeMap<String, Translation>>,
     fallback_locations: Vec<LocationTag>,
 ) -> Result<Option<CatalogItem>, CatalogError> {
     let table = value
@@ -290,16 +293,23 @@ fn parse_item(
         name: name.to_owned(),
         description: description.to_owned(),
     };
-    let french = LocalizedItemText {
-        name: translation
-            .and_then(|value| value.name.as_deref())
-            .unwrap_or(&english.name)
-            .to_owned(),
-        description: translation
-            .and_then(|value| value.description.as_deref())
-            .unwrap_or(&english.description)
-            .to_owned(),
-    };
+    let mut text = BTreeMap::from([("eng".to_owned(), english.clone())]);
+    for (locale, translations) in translations {
+        let translation = translations.get(key);
+        text.insert(
+            locale.clone(),
+            LocalizedItemText {
+                name: translation
+                    .and_then(|value| value.name.as_deref())
+                    .unwrap_or(&english.name)
+                    .to_owned(),
+                description: translation
+                    .and_then(|value| value.description.as_deref())
+                    .unwrap_or(&english.description)
+                    .to_owned(),
+            },
+        );
+    }
     let locations = table
         .get("locations")
         .map(|value| {
@@ -324,8 +334,7 @@ fn parse_item(
         icon_sprite,
         seasons,
         locations,
-        english,
-        french,
+        text,
     )))
 }
 
@@ -386,4 +395,20 @@ fn optional_string<'a>(
 struct Translation {
     name: Option<String>,
     description: Option<String>,
+}
+
+fn translation_locale(path: &str) -> Option<&'static str> {
+    let filename = path
+        .strip_prefix(TRANSLATION_PREFIX)?
+        .strip_suffix(".meta.toml")?;
+    match filename {
+        "fra" | "fr" | "french" => Some("fra"),
+        "spa" | "es" | "spanish" => Some("spa"),
+        "chs" | "zhs" | "zh_cn" | "zh-CN" | "zh-Hans" | "schinese" => Some("chs"),
+        "cht" | "zht" | "zh_tw" | "zh-TW" | "zh-Hant" | "tchinese" => Some("cht"),
+        "jpn" | "ja" | "japanese" => Some("jpn"),
+        "kor" | "ko" | "korean" | "koreana" => Some("kor"),
+        "rus" | "ru" | "russian" => Some("rus"),
+        _ => None,
+    }
 }

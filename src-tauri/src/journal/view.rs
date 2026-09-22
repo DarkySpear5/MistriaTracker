@@ -6,6 +6,96 @@ use crate::{
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
+fn entry_name<'a>(entry: &'a super::catalog::Entry, locale: &str) -> &'a str {
+    entry
+        .localized_names
+        .get(locale)
+        .map(String::as_str)
+        .unwrap_or_else(|| {
+            if locale == "fra" {
+                &entry.french_name
+            } else {
+                &entry.name
+            }
+        })
+}
+
+fn entry_description<'a>(entry: &'a super::catalog::Entry, locale: &str) -> &'a str {
+    entry
+        .localized_descriptions
+        .get(locale)
+        .map(String::as_str)
+        .unwrap_or_else(|| {
+            if locale == "fra" {
+                &entry.french_description
+            } else {
+                &entry.description
+            }
+        })
+}
+
+fn set_name<'a>(set: &'a super::catalog::MuseumSet, locale: &str) -> &'a str {
+    set.localized_names
+        .get(locale)
+        .map(String::as_str)
+        .unwrap_or_else(|| {
+            if locale == "fra" {
+                &set.french_name
+            } else {
+                &set.name
+            }
+        })
+}
+
+fn villager_name<'a>(villager: &'a super::catalog::Villager, locale: &str) -> &'a str {
+    villager
+        .localized_names
+        .get(locale)
+        .map(String::as_str)
+        .unwrap_or_else(|| {
+            if locale == "fra" {
+                &villager.french_name
+            } else {
+                &villager.name
+            }
+        })
+}
+
+fn villager_bio<'a>(villager: &'a super::catalog::Villager, locale: &str) -> &'a str {
+    villager
+        .localized_bios
+        .get(locale)
+        .map(String::as_str)
+        .unwrap_or_else(|| {
+            if locale == "fra" {
+                &villager.french_bio
+            } else {
+                &villager.bio
+            }
+        })
+}
+
+fn gift_group_label(locale: &str, group: &str) -> &'static str {
+    match (locale, group) {
+        ("fra", "loved") => "Adoré",
+        ("fra", _) => "Apprécié",
+        ("spa", "loved") => "Le encanta",
+        ("spa", _) => "Le gusta",
+        ("chs", "loved") => "最喜欢",
+        ("chs", _) => "喜欢",
+        ("cht", "loved") => "最愛",
+        ("cht", _) => "喜歡",
+        ("jpn", "loved") => "大好き",
+        ("jpn", _) => "好き",
+        ("kor", "loved") => "아주 좋아함",
+        ("kor", _) => "좋아함",
+        ("rus", "loved") => "Обожает",
+        ("rus", _) => "Нравится",
+        (_, "loved") => "Loved",
+        _ => "Liked",
+    }
+}
+
 pub fn snapshot(
     catalog: &JournalCatalog,
     evidence: &JournalEvidence,
@@ -13,7 +103,7 @@ pub fn snapshot(
     language: Language,
     mode: SpoilerMode,
 ) -> Value {
-    let french = language == Language::Fra;
+    let locale = language.as_str();
     let all = mode == SpoilerMode::All;
     let mut met = evidence.met.clone();
     let mut gifts = evidence.gifts.clone();
@@ -48,7 +138,7 @@ pub fn snapshot(
         let key = format!("e{index}");
         keys.insert(id.clone(), key.clone());
         let revealed = all || found;
-        entries.push(json!({"key":key,"id":revealed.then_some(id),"category":definition.category,"name":revealed.then_some(if french {&definition.french_name} else {&definition.name}),"description":revealed.then_some(if french {&definition.french_description} else {&definition.description}),"art":key,"found":found,"revealed":revealed,"donated":donated.contains(id),"seasons":if revealed {definition.seasons.clone()} else {vec![]},"places":if revealed {definition.places.clone()} else {vec![]},"hint":hint_for(definition),"sources":[],"ingredients":[]}));
+        entries.push(json!({"key":key,"id":revealed.then_some(id),"category":definition.category,"name":revealed.then_some(entry_name(definition, locale)),"description":revealed.then_some(entry_description(definition, locale)),"art":key,"found":found,"revealed":revealed,"donated":donated.contains(id),"seasons":if revealed {definition.seasons.clone()} else {vec![]},"places":if revealed {definition.places.clone()} else {vec![]},"hint":hint_for(definition),"sources":[],"ingredients":[]}));
     }
     let revealed_ids: BTreeSet<String> = entries
         .iter()
@@ -60,10 +150,13 @@ pub fn snapshot(
         let slots: Vec<_> = set.items.iter().filter_map(|id| keys.get(id)).collect();
         for id in &set.items {
             if revealed_ids.contains(id) {
-                sources.entry(id.clone()).or_default().push(json!({"view":"museum","key":set.id,"label":if french {&set.french_name} else {&set.name}}));
+                sources
+                    .entry(id.clone())
+                    .or_default()
+                    .push(json!({"view":"museum","key":set.id,"label":set_name(set, locale)}));
             }
         }
-        sets.push(json!({"id":set.id,"wing":set.wing,"name":if french {&set.french_name} else {&set.name},"items":slots,"completed":set.items.iter().filter(|item|donated.contains(*item)).count(),"total":set.items.len()}));
+        sets.push(json!({"id":set.id,"wing":set.wing,"name":set_name(set, locale),"items":slots,"completed":set.items.iter().filter(|item|donated.contains(*item)).count(),"total":set.items.len()}));
     }
     let mut villagers = Vec::new();
     for (index, villager) in catalog.villagers.iter().enumerate() {
@@ -81,14 +174,15 @@ pub fn snapshot(
                     .is_some_and(|values| values.contains(id));
                 let visible = revealed && (all || found);
                 let key = format!("g{index}:{group}:{slot_index}");
-                slots.push(json!({"key":key,"entry":visible.then(||keys.get(id)).flatten(),"name":visible.then_some(if french {&definition.french_name} else {&definition.name}),"art":key,"found":found,"revealed":visible}));
+                slots.push(json!({"key":key,"entry":visible.then(||keys.get(id)).flatten(),"name":visible.then_some(entry_name(definition, locale)),"art":key,"found":found,"revealed":visible}));
                 if visible && revealed_ids.contains(id) {
-                    sources.entry(id.clone()).or_default().push(json!({"view":"villagers","key":format!("n{index}"),"label":format!("{} · {}", if french {&villager.french_name} else {&villager.name}, if french {if group == "loved" {"Adoré"} else {"Apprécié"}} else if group == "loved" {"Loved"} else {"Liked"})}));
+                    let group_label = gift_group_label(locale, group);
+                    sources.entry(id.clone()).or_default().push(json!({"view":"villagers","key":format!("n{index}"),"label":format!("{} · {}", villager_name(villager, locale), group_label)}));
                 }
             }
             groups.insert(group, slots);
         }
-        villagers.push(json!({"key":format!("n{index}"),"name":revealed.then_some(if french {&villager.french_name} else {&villager.name}),"bio":revealed.then_some(if french {&villager.french_bio} else {&villager.bio}),"art":format!("n{index}"),"met":known,"revealed":revealed,"loved":if revealed {groups.remove("loved").unwrap_or_default()} else {vec![]},"liked":if revealed {groups.remove("liked").unwrap_or_default()} else {vec![]}}));
+        villagers.push(json!({"key":format!("n{index}"),"name":revealed.then_some(villager_name(villager, locale)),"bio":revealed.then_some(villager_bio(villager, locale)),"art":format!("n{index}"),"met":known,"revealed":revealed,"loved":if revealed {groups.remove("loved").unwrap_or_default()} else {vec![]},"liked":if revealed {groups.remove("liked").unwrap_or_default()} else {vec![]}}));
     }
     for entry in &mut entries {
         let Some(id) = entry["id"].as_str().map(str::to_owned) else {
@@ -103,16 +197,16 @@ pub fn snapshot(
         if let Some(key) = &definition.recipe_key {
             let recipe = format!("recipe:{key}");
             if id != recipe && revealed_ids.contains(&recipe) {
-                links.push(json!({"view":"encyclopedia","key":"recipes","entry":keys.get(&recipe),"label":if french {"Recette"} else {"Recipe"}}));
+                links.push(json!({"view":"encyclopedia","key":"recipes","entry":keys.get(&recipe),"label":"recipeSource"}));
             }
         }
         if let Some(item) = &definition.related_item {
             if revealed_ids.contains(item) {
-                links.push(json!({"view":"encyclopedia","key":catalog.entries[item].category,"entry":keys.get(item),"label":if french {"Objet fabriqué"} else {"Crafted item"}}));
+                links.push(json!({"view":"encyclopedia","key":catalog.entries[item].category,"entry":keys.get(item),"label":"craftedItemSource"}));
             }
         }
         entry["sources"] = json!(links);
-        entry["ingredients"] = json!(definition.ingredients.iter().map(|(id,count)| json!({"key":revealed_ids.contains(id).then(||keys.get(id)).flatten(),"name":revealed_ids.contains(id).then(||catalog.entries.get(id).map(|item|if french {&item.french_name} else {&item.name})).flatten(),"count":count})).collect::<Vec<_>>());
+        entry["ingredients"] = json!(definition.ingredients.iter().map(|(id,count)| json!({"key":revealed_ids.contains(id).then(||keys.get(id)).flatten(),"name":revealed_ids.contains(id).then(||catalog.entries.get(id).map(|item|entry_name(item, locale))).flatten(),"count":count})).collect::<Vec<_>>());
     }
     let mut categories = BTreeMap::<String, (usize, usize)>::new();
     for entry in &entries {

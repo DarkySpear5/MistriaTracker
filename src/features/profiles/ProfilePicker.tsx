@@ -1,11 +1,6 @@
 import { useState } from 'react';
-
-type Language = 'eng' | 'fra';
-
-const copy = {
-  eng: { eyebrow: 'LOCAL PROFILES', title: 'Tracker profile', help: 'Profiles are stored only in Mistria Tracker. Choose a save prefix yourself.', saved: 'Saved tracker profiles', prefix: 'Profile prefix', use: 'Use profile', invalid: 'Enter a numeric profile prefix.' },
-  fra: { eyebrow: 'PROFILS LOCAUX', title: 'Profil du suivi', help: 'Les profils sont enregistrés uniquement dans Mistria Tracker. Choisissez vous-même un préfixe de sauvegarde.', saved: 'Profils du suivi enregistrés', prefix: 'Préfixe du profil', use: 'Utiliser ce profil', invalid: 'Entrez un préfixe de profil numérique.' },
-} as const;
+import type { Language } from '../../journal/types';
+import { tr } from '../../journal/copy';
 
 type ProfilePickerProps = {
   activeProfile: string | null;
@@ -15,7 +10,15 @@ type ProfilePickerProps = {
 };
 
 export function ProfilePicker({ activeProfile, language = 'eng', profiles, onSelect }: ProfilePickerProps) {
-  const text = copy[language];
+  const text = {
+    eyebrow: tr(language, 'profilesEyebrow'),
+    title: tr(language, 'profileTitle'),
+    help: tr(language, 'profileHelp'),
+    saved: tr(language, 'savedProfiles'),
+    prefix: tr(language, 'profilePrefix'),
+    use: tr(language, 'useProfile'),
+    invalid: tr(language, 'invalidProfile'),
+  };
   const [profilePrefix, setProfilePrefix] = useState('');
   const [error, setError] = useState('');
 

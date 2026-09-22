@@ -11,7 +11,7 @@ The initial supported set is English, Simplified Chinese, Traditional Chinese,
 French, Japanese, Korean, Russian, and Spanish. It matches the official Fields
 of Mistria languages available in the current game installation. The structure
 must allow a later release to add another locale by adding its translation file
-and registry entry rather than editing individual screens.
+and registry entry, without editing every screen.
 
 ## Player Experience
 

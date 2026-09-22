@@ -12,6 +12,10 @@ pub struct Entry {
     pub french_name: String,
     pub description: String,
     pub french_description: String,
+    #[serde(default)]
+    pub localized_names: BTreeMap<String, String>,
+    #[serde(default)]
+    pub localized_descriptions: BTreeMap<String, String>,
     pub sprite: String,
     pub seasons: Vec<String>,
     pub places: Vec<String>,
@@ -25,6 +29,8 @@ pub struct MuseumSet {
     pub wing: String,
     pub name: String,
     pub french_name: String,
+    #[serde(default)]
+    pub localized_names: BTreeMap<String, String>,
     pub items: Vec<String>,
 }
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -34,6 +40,10 @@ pub struct Villager {
     pub french_name: String,
     pub bio: String,
     pub french_bio: String,
+    #[serde(default)]
+    pub localized_names: BTreeMap<String, String>,
+    #[serde(default)]
+    pub localized_bios: BTreeMap<String, String>,
     pub portrait: String,
     pub loved: Vec<String>,
     pub liked: Vec<String>,
@@ -80,6 +90,22 @@ fn translated(translations: &Value, path: &str, id: &str, field: &str, fallback:
         .and_then(Value::as_str)
         .unwrap_or(fallback)
         .to_owned()
+}
+
+fn translation_locale(path: &str) -> Option<&'static str> {
+    let filename = path
+        .strip_prefix("assets/localization/translations/")?
+        .strip_suffix(".meta.toml")?;
+    match filename {
+        "fra" | "fr" | "french" => Some("fra"),
+        "spa" | "es" | "spanish" => Some("spa"),
+        "chs" | "zhs" | "zh_cn" | "zh-CN" | "zh-Hans" | "schinese" => Some("chs"),
+        "cht" | "zht" | "zh_tw" | "zh-TW" | "zh-Hant" | "tchinese" => Some("cht"),
+        "jpn" | "ja" | "japanese" => Some("jpn"),
+        "kor" | "ko" | "korean" | "koreana" => Some("kor"),
+        "rus" | "ru" | "russian" => Some("rus"),
+        _ => None,
+    }
 }
 
 #[cfg(test)]
@@ -145,6 +171,7 @@ impl JournalCatalog {
     pub fn extract(source: &AssetsZip) -> Result<Self, CatalogError> {
         let mut archive = ZipArchive::new(File::open(source.as_path())?)?;
         let mut documents = BTreeMap::new();
+        let mut translation_documents = BTreeMap::new();
         let mut artwork = BTreeMap::new();
         for index in 0..archive.len() {
             let mut entry = archive.by_index(index)?;
@@ -161,6 +188,7 @@ impl JournalCatalog {
                     .to_owned();
                 artwork.entry(sprite).or_insert(path.clone());
             }
+            let translation_locale = translation_locale(&path);
             let allowed = path.starts_with("assets/fiddle/items/")
                 || path.starts_with("assets/fiddle/museum_wings/")
                 || path.starts_with("assets/fiddle/npcs/")
@@ -172,8 +200,8 @@ impl JournalCatalog {
                         | "assets/fiddle/perks.toml"
                         | "assets/fiddle/spells.toml"
                         | "assets/fiddle/dates.toml"
-                        | "assets/localization/translations/fra.meta.toml"
-                );
+                )
+                || translation_locale.is_some();
             if !allowed || !path.ends_with(".toml") {
                 continue;
             }
@@ -182,12 +210,26 @@ impl JournalCatalog {
             }
             let mut text = String::new();
             entry.read_to_string(&mut text)?;
-            documents.insert(path, toml::from_str::<Value>(&text)?);
+            let document = toml::from_str::<Value>(&text)?;
+            if let Some(locale) = translation_locale {
+                translation_documents
+                    .entry(locale)
+                    .or_insert_with(|| document.clone());
+            }
+            documents.insert(path, document);
         }
-        let translations = documents
-            .get("assets/localization/translations/fra.meta.toml")
-            .cloned()
-            .unwrap_or(Value::Table(Default::default()));
+        let translations = ["fra", "spa", "chs", "cht", "jpn", "kor", "rus"]
+            .into_iter()
+            .map(|locale| {
+                (
+                    locale,
+                    translation_documents
+                        .get(locale)
+                        .cloned()
+                        .unwrap_or(Value::Table(Default::default())),
+                )
+            })
+            .collect::<BTreeMap<_, _>>();
         let mut catalog = Self {
             artwork,
             ..Self::default()
@@ -207,18 +249,44 @@ impl JournalCatalog {
                     continue;
                 }
                 let description = string(value, "description");
+                let localized_names = ["fra", "spa", "chs", "cht", "jpn", "kor", "rus"]
+                    .into_iter()
+                    .map(|locale| {
+                        (
+                            locale.to_owned(),
+                            translated(&translations[locale], path, id, "name", &name),
+                        )
+                    })
+                    .collect();
+                let localized_descriptions = ["fra", "spa", "chs", "cht", "jpn", "kor", "rus"]
+                    .into_iter()
+                    .map(|locale| {
+                        (
+                            locale.to_owned(),
+                            translated(
+                                &translations[locale],
+                                path,
+                                id,
+                                "description",
+                                &description,
+                            ),
+                        )
+                    })
+                    .collect();
                 let mut item = Entry {
                     id: id.clone(),
                     category: category(path, value).into(),
-                    french_name: translated(&translations, path, id, "name", &name),
+                    french_name: translated(&translations["fra"], path, id, "name", &name),
+                    localized_names,
                     name,
                     french_description: translated(
-                        &translations,
+                        &translations["fra"],
                         path,
                         id,
                         "description",
                         &description,
                     ),
+                    localized_descriptions,
                     description,
                     sprite: string(value, "icon_sprite"),
                     seasons: strings(value.get("seasons")),
@@ -270,11 +338,32 @@ impl JournalCatalog {
                     for (id, set) in sets {
                         let name = string(set, "name");
                         let items = strings(set.get("items"));
-                        let french_name =
-                            translated(&translations, path, &format!("sets/{id}"), "name", &name);
+                        let french_name = translated(
+                            &translations["fra"],
+                            path,
+                            &format!("sets/{id}"),
+                            "name",
+                            &name,
+                        );
+                        let localized_names = ["fra", "spa", "chs", "cht", "jpn", "kor", "rus"]
+                            .into_iter()
+                            .map(|locale| {
+                                (
+                                    locale.to_owned(),
+                                    translated(
+                                        &translations[locale],
+                                        path,
+                                        &format!("sets/{id}"),
+                                        "name",
+                                        &name,
+                                    ),
+                                )
+                            })
+                            .collect();
                         catalog.sets.push(MuseumSet {
                             id: format!("{wing}:{id}"),
                             wing: wing.into(),
+                            localized_names,
                             name,
                             french_name,
                             items: items.clone(),
@@ -313,10 +402,30 @@ impl JournalCatalog {
                 .into_iter()
                 .find(|sprite| catalog.artwork.contains_key(sprite))
                 .unwrap_or_default();
+                let localized_names = ["fra", "spa", "chs", "cht", "jpn", "kor", "rus"]
+                    .into_iter()
+                    .map(|locale| {
+                        (
+                            locale.to_owned(),
+                            translated(&translations[locale], path, "", "name", &name),
+                        )
+                    })
+                    .collect();
+                let localized_bios = ["fra", "spa", "chs", "cht", "jpn", "kor", "rus"]
+                    .into_iter()
+                    .map(|locale| {
+                        (
+                            locale.to_owned(),
+                            translated(&translations[locale], path, "", "bio", &bio),
+                        )
+                    })
+                    .collect();
                 catalog.villagers.push(Villager {
-                    french_name: translated(&translations, path, "", "name", &name),
+                    french_name: translated(&translations["fra"], path, "", "name", &name),
+                    french_bio: translated(&translations["fra"], path, "", "bio", &bio),
+                    localized_names,
+                    localized_bios,
                     name,
-                    french_bio: translated(&translations, path, "", "bio", &bio),
                     bio,
                     id,
                     portrait,
@@ -340,20 +449,46 @@ impl JournalCatalog {
                         continue;
                     }
                     let description = string(value, "description");
+                    let localized_names = ["fra", "spa", "chs", "cht", "jpn", "kor", "rus"]
+                        .into_iter()
+                        .map(|locale| {
+                            (
+                                locale.to_owned(),
+                                translated(&translations[locale], path, id, "name", &name),
+                            )
+                        })
+                        .collect();
+                    let localized_descriptions = ["fra", "spa", "chs", "cht", "jpn", "kor", "rus"]
+                        .into_iter()
+                        .map(|locale| {
+                            (
+                                locale.to_owned(),
+                                translated(
+                                    &translations[locale],
+                                    path,
+                                    id,
+                                    "description",
+                                    &description,
+                                ),
+                            )
+                        })
+                        .collect();
                     catalog.entries.insert(
                         format!("{category}:{id}"),
                         Entry {
                             id: format!("{category}:{id}"),
                             category: category.into(),
-                            french_name: translated(&translations, path, id, "name", &name),
+                            french_name: translated(&translations["fra"], path, id, "name", &name),
+                            localized_names,
                             name,
                             french_description: translated(
-                                &translations,
+                                &translations["fra"],
                                 path,
                                 id,
                                 "description",
                                 &description,
                             ),
+                            localized_descriptions,
                             description,
                             sprite: if category == "scrolls" {
                                 string(value, "icon_key")
