@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.7 — testing
+## 0.1.7 — 2026-09-24
 
 - Replaced generic undiscovered-item hints with verified area and season clues
   for fish, bugs, crops, and forageables, plus broad find areas for artifacts.
