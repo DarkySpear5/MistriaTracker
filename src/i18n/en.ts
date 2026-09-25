@@ -115,6 +115,8 @@ export const en = {
   chooseGameFolder: "Choose Fields of Mistria folder",
   gameFolderNotFound: "Fields of Mistria could not be found. Open Settings to choose its folder.",
   refreshPreserved: "Some data could not be refreshed. Your saved discoveries are preserved.",
+  catalogUnverified: "The game’s item data has changed and isn’t verified yet. Tracker will still try to read it; your saved discoveries remain separate.",
+  catalogUnsupported: "This game catalog version isn’t supported yet. Your saved discoveries are preserved.",
   unsupportedSaveVersion: "Save version {version} is not approved for import. Open this character in the current Fields of Mistria version, save and close the game, then select the updated .sav file. Your original save was not changed.",
   importedDiscoveries: "{count} discoveries imported.",
   alreadyImportedDiscoveries: "{count} discoveries were already imported.",

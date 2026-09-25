@@ -33,9 +33,11 @@ then follow these steps:
 Run AIM's apply/rebuild action or MOMI's **Install** button again after every
 Fields of Mistria update and after replacing the Companion files.
 
-Save import is intentionally fail-closed: if the selected game version is not
+Save import is intentionally fail-closed: if the selected save version is not
 approved yet, Tracker reports that clearly and leaves both the save and tracker
-database unchanged.
+database unchanged. If the game catalog has a new or localized fingerprint,
+Tracker labels it unverified, reads it read-only, and preserves existing tracker
+data if extraction fails.
 
 Tracker finds Fields of Mistria automatically in normal and custom Steam
 libraries. If it cannot, open Settings and choose the main game folder
@@ -83,9 +85,9 @@ and [privacy policy](PRIVACY.md).
   its only filter, so it does not replace a game value or change gameplay.
 - The companion writes only its own log under
   `%LOCALAPPDATA%\FieldsOfMistria\mod_data\mistria_tracker_companion\logs\`.
-- The desktop app refuses to begin live tracking unless a game build has passed
-  an explicit compatibility approval. Unknown or probe-only builds remain
-  paused.
+- The desktop app refuses to import unsupported saves. A well-formed but unknown
+  game catalog is read-only and marked unverified; parsing failures preserve the
+  previous catalog and journal instead of replacing them.
 - Spoiler-free is the default. Item and gift identities are shown only after
   their own observed event; aggregate counts may remain visible.
 

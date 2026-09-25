@@ -6,6 +6,7 @@ import { Icon } from "./Icon";
 import { Artwork } from "./Artwork";
 export type ScreenProps = {
   journal: Journal;
+  hintsEnabled: boolean;
   language: Language;
   onEntry: (key: string) => void;
   onHint: (hint: Hint) => void;
@@ -519,7 +520,7 @@ export function Villagers(props: ScreenProps) {
                           }
                         >
                           <Artwork
-                            token={gift.art}
+                            token={gift.revealed || props.hintsEnabled ? gift.art : null}
                             hidden={!gift.revealed}
                             kind="heart"
                           />

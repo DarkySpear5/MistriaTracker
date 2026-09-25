@@ -1314,16 +1314,30 @@ small {
   flex-shrink: 0;
 }
 .language-buttons {
-  display: flex;
-  gap: 9px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 132px), 1fr));
+  gap: 10px;
+  margin-top: 16px;
 }
-.language-buttons button {
-  padding: 9px 18px;
+.language-option {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 12px;
   border: 1px solid #536675;
   border-radius: 7px;
+  background: #20313c;
   color: #acbbc3;
+  line-height: 1.25;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
-.language-buttons button[aria-pressed="true"] {
+.language-option:hover {
+  background: #2b414e;
+  border-color: #718391;
+}
+.language-option[aria-pressed="true"] {
   background: #383c52;
   border-color: #877ba7;
   color: #e5d9f7;

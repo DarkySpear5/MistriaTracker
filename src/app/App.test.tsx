@@ -35,6 +35,68 @@ const search = (query: string) =>
     target: { value: query },
   });
 describe("Desktop journal", () => {
+  it("groups language choices into evenly styled options", async () => {
+    render(
+      <App
+        initialJournal={testJournal}
+        nativeRuntime={() => false}
+        artLoader={async () => ({})}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+
+    const languageChoices = screen.getByRole("group", { name: "Language" });
+    const choices = within(languageChoices).getAllByRole("button");
+    expect(choices).toHaveLength(9);
+    expect(choices.every((choice) => choice.classList.contains("language-option"))).toBe(true);
+  });
+
+  it("continues live tracking with an unverified catalog fingerprint and shows a warning", async () => {
+    const readinessProbe = vi.fn(async () => ({
+      catalog: {
+        game_version:
+          "catalog-sha256:21a15844be0f6b0c0a2038aaaf4997551bf09158f9997919d4acd7bcd50dd016",
+        item_count: 120,
+      },
+      catalog_approved: false,
+      catalog_unverified: true,
+      companion_log_found: true,
+    }));
+    vi.mocked(invoke).mockImplementation(async (command) => {
+      if (command === "get_preferences")
+        return {
+          language_preference: "auto",
+          effective_language: "eng",
+          spoiler_mode: "free",
+          hints_enabled: false,
+        };
+      if (command === "get_journal_snapshot") return testJournal;
+      if (command === "get_profile_summary")
+        return { active_profile: "ari", profiles: ["ari"] };
+      if (command === "start_live_tracking") return;
+      throw new Error("Unexpected command " + command);
+    });
+
+    render(
+      <App
+        nativeRuntime={() => true}
+        resolveGameDirectory={async () => "C:/Test/Fields of Mistria"}
+        readinessProbe={readinessProbe}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith("start_live_tracking", {
+        gameDirectory: "C:/Test/Fields of Mistria",
+        modDataDirectory: "C:/Test/mod_data",
+      }),
+    );
+    expect(
+      await screen.findByText(/game’s item data has changed/i),
+    ).toBeVisible();
+  });
+
   it("shows that no save is loaded after the companion deactivates the current profile", async () => {
     let active: string | null = "ari";
     vi.useFakeTimers();

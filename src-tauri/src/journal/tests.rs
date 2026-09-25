@@ -347,6 +347,7 @@ fn hint_hidden_gift_shows_an_activity_without_its_identity_or_reaction() {
             id: "secret_gift".into(),
             category: "crops".into(),
             name: "Secret Gift Name".into(),
+            sprite: "secret_gift_sprite".into(),
             ..Entry::default()
         },
     );
@@ -373,6 +374,11 @@ fn hint_hidden_gift_shows_an_activity_without_its_identity_or_reaction() {
     assert!(!gift["key"].as_str().unwrap().contains("liked"));
     assert_eq!(gift["hint"]["kind"], "gift");
     assert_eq!(gift["hint"]["activity"], "crops");
+    assert_eq!(gift["art"], "g0:untried:0");
+    assert_eq!(
+        view::artwork_for(&catalog, &snapshot, gift["art"].as_str().unwrap()),
+        Some("secret_gift_sprite_hidden".into())
+    );
     assert!(gift["entry"].is_null());
     assert!(gift["name"].is_null());
     assert!(!snapshot.to_string().contains("secret_gift"));

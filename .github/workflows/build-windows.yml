@@ -55,18 +55,18 @@ jobs:
           if (-not (Test-Path -LiteralPath 'companion\mistria_tracker_companion\gml\MistriaTrackerCompanion.gml')) { throw 'Companion GML is missing.' }
           New-Item -ItemType Directory -Force -Path tools\installer | Out-Null
           & 'C:\Program Files (x86)\NSIS\makensis.exe' /V2 tools\installer.nsi
-          $installer = 'tools\installer\MistriaTracker-0.1.7-setup.exe'
+          $installer = 'tools\installer\MistriaTracker-0.1.8-setup.exe'
           $hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash
-          Set-Content -LiteralPath "$installer.sha256" -Value "$hash  MistriaTracker-0.1.7-setup.exe" -Encoding ASCII
+          Set-Content -LiteralPath "$installer.sha256" -Value "$hash  MistriaTracker-0.1.8-setup.exe" -Encoding ASCII
 
       - name: Upload unsigned Windows build artifact
         id: upload_unsigned
         uses: actions/upload-artifact@v4
         with:
-          name: mistria-tracker-0.1.7-windows-unsigned
+          name: mistria-tracker-0.1.8-windows-unsigned
           if-no-files-found: error
           path: |
-            tools/installer/MistriaTracker-0.1.7-setup.exe
-            tools/installer/MistriaTracker-0.1.7-setup.exe.sha256
+            tools/installer/MistriaTracker-0.1.8-setup.exe
+            tools/installer/MistriaTracker-0.1.8-setup.exe.sha256
 
       # A future trusted-signing provider may consume this verified artifact.

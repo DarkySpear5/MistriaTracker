@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.8 — 2026-09-25
+
+- Treat well-formed but unfamiliar game-catalog fingerprints as **unverified**
+  instead of blocking a read-only refresh; unsupported saves remain fail-closed.
+- Added a clear unverified-catalog warning so a harmless game update or
+  localization change is distinguishable from a parsing failure.
+- Make catalog and journal replacement atomic, preserving the previous working
+  data when extraction or parsing of a new catalog fails.
+- Added localized catalog-status messages and retry controls across all eight
+  supported Tracker languages.
+- Reworked the language selector into a responsive, accessible button group that
+  remains readable at narrow window sizes.
+- Restored spoiler-safe villager gift silhouettes when Gentle hints is enabled;
+  clicking a hidden gift still reveals only a broad hint, never its identity or
+  reaction. With hints disabled, the gift remains fully hidden.
+
 ## 0.1.7 — 2026-09-24
 
 - Replaced generic undiscovered-item hints with verified area and season clues

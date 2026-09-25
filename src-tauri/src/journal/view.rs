@@ -175,8 +175,13 @@ pub fn snapshot(
                     .is_some_and(|values| values.contains(id));
                 let visible = revealed && (all || found);
                 if revealed && !visible {
-                    let key = format!("g{index}:untried:{}", untried.len());
-                    untried.push(json!({"key":key,"entry":null,"name":null,"art":null,"found":false,"revealed":false,"hint":hint_for(definition, true)}));
+                    let hidden_slot = if group == "loved" {
+                        slot_index
+                    } else {
+                        villager.loved.len() + slot_index
+                    };
+                    let key = format!("g{index}:untried:{hidden_slot}");
+                    untried.push(json!({"key":key,"entry":null,"name":null,"art":key,"found":false,"revealed":false,"hint":hint_for(definition, true)}));
                     continue;
                 }
                 let key = format!("g{index}:{group}:{slot_index}");
@@ -255,6 +260,21 @@ pub fn artwork_for(catalog: &JournalCatalog, snapshot: &Value, key: &str) -> Opt
                     });
                 }
             }
+        }
+        for gift in villager["untried"].as_array()? {
+            if gift["art"].as_str() != Some(key) {
+                continue;
+            }
+            let slot: usize = key.rsplit(':').next()?.parse().ok()?;
+            let item_id = catalog.villagers[index]
+                .loved
+                .iter()
+                .chain(catalog.villagers[index].liked.iter())
+                .nth(slot)?;
+            return catalog
+                .entries
+                .get(item_id)
+                .map(|entry| protected_sprite(&entry.sprite, false));
         }
     }
     None

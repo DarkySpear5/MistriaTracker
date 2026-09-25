@@ -1,6 +1,8 @@
 use crate::{
     catalog::{probe, AssetsZip, Catalog, CatalogCacheDir, CatalogExtractor, CatalogProbeReport},
-    compatibility::{CompatibilityDecision, CompatibilityMatrix, SaveParserDecision, VersionSet},
+    compatibility::{
+        CatalogParserDecision, CompatibilityDecision, CompatibilityMatrix, VersionSet,
+    },
     domain::{CompanionEvent, EntityId, EventEnvelope, ItemId, Language, ProfileId, SpoilerMode},
     localization::{self, LanguagePreference},
     persistence::{AcceptResult, Database, ImportResult, RepoError, Repository},
@@ -102,6 +104,7 @@ impl<'de> Deserialize<'de> for TrackerPreferences {
 pub struct ReadinessReport {
     pub catalog: CatalogProbeReport,
     pub catalog_approved: bool,
+    pub catalog_unverified: bool,
     pub companion_log_found: bool,
 }
 
@@ -360,17 +363,19 @@ impl TrackerState {
             .collect()
     }
 
-    /// Installs an already parsed catalog only after its declared game version is approved.
-    /// The catalog remains in memory and is never written into a game directory.
+    /// Installs an already parsed catalog when approved or when it is a well-formed,
+    /// unrecognized content fingerprint. Catalog parsing remains read-only.
     pub fn install_catalog(
         &self,
         catalog: Catalog,
         compatibility: &CompatibilityMatrix,
     ) -> Result<(), TrackerStateError> {
-        if compatibility
-            .catalog_parser_decision(&catalog.version.source_game_version, CATALOG_PARSER_VERSION)
-            != SaveParserDecision::Verified
-        {
+        let decision = compatibility
+            .catalog_parser_decision(&catalog.version.source_game_version, CATALOG_PARSER_VERSION);
+        if !matches!(
+            decision,
+            CatalogParserDecision::Verified | CatalogParserDecision::Unverified
+        ) {
             return Err(TrackerStateError::CatalogPaused);
         }
         *self
@@ -380,7 +385,8 @@ impl TrackerState {
         Ok(())
     }
 
-    /// Reads only an asset archive, then delegates to the compatibility gate before installation.
+    /// Reads only an asset archive. All derived data is prepared before the existing
+    /// in-memory catalog is replaced, so extraction failures preserve the prior view.
     pub fn load_catalog(
         &self,
         source: &AssetsZip,
@@ -388,13 +394,28 @@ impl TrackerState {
         compatibility: &CompatibilityMatrix,
     ) -> Result<(), TrackerStateError> {
         let catalog = CatalogExtractor::extract(source, cache)?;
-        self.install_catalog(catalog, compatibility)?;
+        let decision = compatibility
+            .catalog_parser_decision(&catalog.version.source_game_version, CATALOG_PARSER_VERSION);
+        if !matches!(
+            decision,
+            CatalogParserDecision::Verified | CatalogParserDecision::Unverified
+        ) {
+            return Err(TrackerStateError::CatalogPaused);
+        }
         let journal = crate::journal::catalog::JournalCatalog::extract(source)?;
         let art = crate::journal::art::prepare(source, cache, &journal)?;
-        *self
+        let mut catalog_slot = self
+            .catalog
+            .lock()
+            .map_err(|_| TrackerStateError::Unavailable)?;
+        // Acquire both guards before assigning either value to avoid a partial state
+        // replacement if a lock is poisoned.
+        let mut journal_slot = self
             .journal
             .lock()
-            .map_err(|_| TrackerStateError::Unavailable)? = Some((journal, art));
+            .map_err(|_| TrackerStateError::Unavailable)?;
+        *catalog_slot = Some(catalog);
+        *journal_slot = Some((journal, art));
         Ok(())
     }
 
@@ -421,19 +442,24 @@ impl TrackerState {
         let catalog = probe(&source, cache)?;
         let catalog_approved = compatibility
             .catalog_parser_decision(&catalog.game_version, CATALOG_PARSER_VERSION)
-            == SaveParserDecision::Verified;
+            == CatalogParserDecision::Verified;
+        let catalog_unverified = compatibility
+            .catalog_parser_decision(&catalog.game_version, CATALOG_PARSER_VERSION)
+            == CatalogParserDecision::Unverified;
         let companion_log_found = mod_data_directory
             .join("mistria_tracker_companion/logs/mistria_tracker_companion.log")
             .is_file();
         Ok(ReadinessReport {
             catalog,
             catalog_approved,
+            catalog_unverified,
             companion_log_found,
         })
     }
 
     /// Returns a spoiler-filtered view built from tracker-owned event data.
-    /// A catalog is absent until its parser has been compatibility-approved.
+    /// A catalog is absent until its parser is approved or its content fingerprint
+    /// is recognized as a well-formed but unverified catalog hash.
     pub fn active_profile_snapshot(&self) -> Result<Option<AppSnapshot>, TrackerStateError> {
         let Some(catalog) = self
             .catalog
@@ -814,8 +840,120 @@ mod tests {
                     item_count: 1,
                 },
                 catalog_approved: false,
+                catalog_unverified: false,
                 companion_log_found: false,
             }
+        );
+    }
+
+    #[test]
+    fn unknown_catalog_fingerprint_is_reported_as_unverified_and_loaded() {
+        let directory = tempfile::tempdir().unwrap();
+        let game = directory.path().join("game");
+        std::fs::create_dir(&game).unwrap();
+        let fixture = crate::test_support::catalog::fixture_assets_without_version();
+        std::fs::copy(fixture.source.as_path(), game.join("assets.zip")).unwrap();
+        let state = TrackerState::from_repository(Repository::in_memory().unwrap());
+        let cache = CatalogCacheDir::new(directory.path().join("cache"));
+        let matrix = CompatibilityMatrix::embedded().unwrap();
+
+        let report = state
+            .readiness_report(&game, directory.path(), &cache, &matrix)
+            .unwrap();
+
+        assert!(report.catalog.game_version.starts_with("catalog-sha256:"));
+        assert!(!report.catalog_approved);
+        assert!(report.catalog_unverified);
+
+        state
+            .load_catalog_from_game_assets(
+                &GameAssetsPath::new(&game, &game.join("assets.zip")).unwrap(),
+                &cache,
+                &matrix,
+            )
+            .unwrap();
+        assert!(state.catalog.lock().unwrap().is_some());
+    }
+
+    #[test]
+    fn failed_journal_parse_keeps_the_previous_catalog_and_journal() {
+        use std::{fs::File, io::Write};
+        use zip::{write::SimpleFileOptions, ZipWriter};
+
+        let directory = tempfile::tempdir().unwrap();
+        let fixture = crate::test_support::catalog::fixture_assets();
+        let state = TrackerState::from_repository(Repository::in_memory().unwrap());
+        let matrix: CompatibilityMatrix = serde_json::from_value(serde_json::json!({
+            "records": [{
+                "game_version":"synthetic-1",
+                "event_schema_versions":[1],
+                "companion_versions":["0.1.x"],
+                "save_parser_versions":[1],
+                "catalog_parser_versions":[1],
+                "probe_required":false
+            }]
+        }))
+        .unwrap();
+        state
+            .load_catalog(&fixture.source, &fixture.cache, &matrix)
+            .unwrap();
+        let previous_name = state
+            .catalog
+            .lock()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .item(&ItemId::new("paper_pondshell").unwrap())
+            .unwrap()
+            .text("eng")
+            .name
+            .clone();
+        let previous_journal_name = state.journal.lock().unwrap().as_ref().unwrap().0.entries
+            ["paper_pondshell"]
+            .name
+            .clone();
+
+        let invalid_path = directory.path().join("invalid-journal.zip");
+        let mut archive = ZipWriter::new(File::create(&invalid_path).unwrap());
+        let options = SimpleFileOptions::default();
+        archive
+            .start_file("assets/fiddle/fiddle.meta.toml", options)
+            .unwrap();
+        archive
+            .write_all(b"game_version = \"synthetic-1\"")
+            .unwrap();
+        archive
+            .start_file("assets/fiddle/items/synthetic.toml", options)
+            .unwrap();
+        archive
+            .write_all(b"[paper_pondshell]\nname = \"Replacement Name\"")
+            .unwrap();
+        archive
+            .start_file("assets/fiddle/fish.toml", options)
+            .unwrap();
+        archive.write_all(b"this is invalid = [").unwrap();
+        archive.finish().unwrap();
+        let invalid_source = AssetsZip::new(invalid_path).unwrap();
+
+        assert!(state
+            .load_catalog(&invalid_source, &fixture.cache, &matrix)
+            .is_err());
+        assert_eq!(
+            state
+                .catalog
+                .lock()
+                .unwrap()
+                .as_ref()
+                .unwrap()
+                .item(&ItemId::new("paper_pondshell").unwrap())
+                .unwrap()
+                .text("eng")
+                .name,
+            previous_name
+        );
+        assert_eq!(
+            state.journal.lock().unwrap().as_ref().unwrap().0.entries["paper_pondshell"].name,
+            previous_journal_name
         );
     }
 }

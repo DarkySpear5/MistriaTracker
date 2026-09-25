@@ -117,6 +117,8 @@ export const cht: LocaleDictionary = {
   chooseGameFolder: "選擇《米斯特里亞田園記》資料夾",
   gameFolderNotFound: "找不到《米斯特里亞田園記》。請在設定中選擇遊戲資料夾。",
   refreshPreserved: "部分資料無法更新。已儲存的發現仍會保留。",
+  catalogUnverified: "遊戲物品資料已變更，尚未驗證。追蹤器仍會嘗試讀取；已儲存的發現會分開保留。",
+  catalogUnsupported: "目前尚不支援此遊戲目錄版本。已儲存的發現仍會保留。",
   unsupportedSaveVersion: "存檔版本 {version} 尚未獲准匯入。請在目前版本的遊戲中載入該角色、儲存並離開遊戲，然後選擇更新後的 .sav 檔案。原始存檔不會被修改。",
   importedDiscoveries: "已匯入 {count} 項發現。",
   alreadyImportedDiscoveries: "已有 {count} 項發現匯入過。",

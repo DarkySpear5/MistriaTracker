@@ -5,7 +5,7 @@ Name "Mistria Tracker"
 Icon "..\src-tauri\icons\icon.ico"
 UninstallIcon "..\src-tauri\icons\icon.ico"
 !ifndef OUTPUT_FILE
-!define OUTPUT_FILE "installer\\MistriaTracker-0.1.7-setup.exe"
+!define OUTPUT_FILE "installer\\MistriaTracker-0.1.8-setup.exe"
 !endif
 OutFile "${OUTPUT_FILE}"
 InstallDir "$LOCALAPPDATA\\Mistria Tracker"

@@ -117,6 +117,8 @@ export const es: LocaleDictionary = {
   chooseGameFolder: "Elegir la carpeta de Fields of Mistria",
   gameFolderNotFound: "No se encontró Fields of Mistria. Abre Ajustes para elegir su carpeta.",
   refreshPreserved: "No se pudieron actualizar algunos datos. Tus descubrimientos guardados se conservaron.",
+  catalogUnverified: "Los datos de objetos del juego cambiaron y aún no están verificados. El rastreador intentará leerlos; tus descubrimientos guardados se mantienen por separado.",
+  catalogUnsupported: "Esta versión del catálogo del juego aún no es compatible. Tus descubrimientos guardados se conservaron.",
   unsupportedSaveVersion: "La versión {version} no está aprobada para importar. Abre este personaje en la versión actual de Fields of Mistria, guarda y cierra el juego, y luego selecciona el archivo .sav actualizado. Tu partida original no se modificó.",
   importedDiscoveries: "Se importaron {count} descubrimientos.",
   alreadyImportedDiscoveries: "Los {count} descubrimientos ya estaban importados.",

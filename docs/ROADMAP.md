@@ -35,9 +35,8 @@ blocked until separately verified.
 
 ## 3. Unified language support
 
-Status: 0.1.7 testing implementation adds complete interface dictionaries and
-game-catalog extraction for all eight planned languages. It remains on the
-testing branch pending language review.
+Status: 0.1.8 publishes complete interface dictionaries and game-catalog
+extraction for all eight planned languages.
 
 - One language choice only: **Auto-detect** or one manual language.
 - The choice controls both Tracker controls and extracted game catalog text.
@@ -50,8 +49,8 @@ testing branch pending language review.
 
 ## 4. GitHub update delivery — deferred
 
-Status: explicitly deferred. Do not implement an auto-updater in the 0.1.7
-testing branch; it needs a separate security and release decision later.
+Status: explicitly deferred. Do not implement an auto-updater in the 0.1.8
+release; it needs a separate security and release decision later.
 
 - Check GitHub releases only when the player explicitly enables update checks.
 - Download and install only a verified release artifact; never auto-run an
@@ -62,7 +61,7 @@ testing branch; it needs a separate security and release decision later.
 
 ## 5. Useful, spoiler-safe hints
 
-Status: implemented on the isolated 0.1.7 testing branch, not yet published.
+Status: published in 0.1.8 after isolated testing.
 Hints use only verified game-definition area, season, and recipe-source facts.
 Unknown facts remain omitted and the category-level clue remains available.
 

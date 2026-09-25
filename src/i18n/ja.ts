@@ -117,6 +117,8 @@ export const ja: LocaleDictionary = {
   chooseGameFolder: "Fields of Mistriaのフォルダーを選択",
   gameFolderNotFound: "Fields of Mistriaが見つかりません。設定からフォルダーを選択してください。",
   refreshPreserved: "一部のデータを更新できませんでした。保存済みの発見は保持されています。",
+  catalogUnverified: "ゲームのアイテムデータが変更され、まだ検証されていません。トラッカーは読み取りを試みます。保存済みの発見データは別に保管されます。",
+  catalogUnsupported: "このゲームカタログのバージョンにはまだ対応していません。保存済みの発見データは保持されます。",
   unsupportedSaveVersion: "セーブのバージョン {version} はまだインポートに対応していません。現在のゲームでこのキャラクターを開いて保存し、ゲームを終了してから更新後の .sav ファイルを選択してください。元のセーブは変更されません。",
   importedDiscoveries: "{count} 件の発見をインポートしました。",
   alreadyImportedDiscoveries: "{count} 件の発見はすでにインポート済みです。",

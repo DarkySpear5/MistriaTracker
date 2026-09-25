@@ -14,6 +14,14 @@ pub enum SaveParserDecision {
     Unsupported,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CatalogParserDecision {
+    Verified,
+    Unverified,
+    ProbeRequired,
+    Unsupported,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct VersionSet {
     pub game_version: String,
@@ -132,25 +140,35 @@ impl CompatibilityMatrix {
         &self,
         game_version: &str,
         parser_version: u16,
-    ) -> SaveParserDecision {
+    ) -> CatalogParserDecision {
         let Some(record) = self
             .records
             .iter()
             .find(|record| record.game_version == game_version)
         else {
-            return SaveParserDecision::Unsupported;
+            return if is_catalog_fingerprint(game_version) {
+                CatalogParserDecision::Unverified
+            } else {
+                CatalogParserDecision::Unsupported
+            };
         };
 
         if !record.catalog_parser_versions.contains(&parser_version) {
-            return SaveParserDecision::Unsupported;
+            return CatalogParserDecision::Unsupported;
         }
 
         if record.probe_required {
-            SaveParserDecision::ProbeRequired
+            CatalogParserDecision::ProbeRequired
         } else {
-            SaveParserDecision::Verified
+            CatalogParserDecision::Verified
         }
     }
+}
+
+fn is_catalog_fingerprint(value: &str) -> bool {
+    value
+        .strip_prefix("catalog-sha256:")
+        .is_some_and(|digest| digest.len() == 64 && digest.bytes().all(|b| b.is_ascii_hexdigit()))
 }
 
 fn version_matches(rule: &str, version: &str) -> bool {
@@ -173,10 +191,34 @@ mod tests {
         let matrix = CompatibilityMatrix::fixture_for("synthetic-1");
         assert_eq!(
             matrix.catalog_parser_decision("synthetic-1", 1),
-            SaveParserDecision::ProbeRequired
+            CatalogParserDecision::ProbeRequired
         );
         assert_eq!(
             matrix.catalog_parser_decision("unknown", 1),
+            CatalogParserDecision::Unsupported
+        );
+    }
+
+    #[test]
+    fn unknown_catalog_fingerprints_are_unverified_without_approving_saves() {
+        let matrix = CompatibilityMatrix::embedded().unwrap();
+        let unknown =
+            "catalog-sha256:21a15844be0f6b0c0a2038aaaf4997551bf09158f9997919d4acd7bcd50dd016";
+
+        assert_eq!(
+            matrix.catalog_parser_decision(unknown, 1),
+            CatalogParserDecision::Unverified
+        );
+        assert_eq!(
+            matrix.catalog_parser_decision("unknown-game-version", 1),
+            CatalogParserDecision::Unsupported
+        );
+        assert_eq!(
+            matrix.catalog_parser_decision("catalog-sha256:not-a-digest", 1),
+            CatalogParserDecision::Unsupported
+        );
+        assert_eq!(
+            matrix.save_parser_decision(unknown, 1),
             SaveParserDecision::Unsupported
         );
     }
@@ -194,7 +236,7 @@ mod tests {
                 "catalog-sha256:18a3827b479958c768c2b18f565c8081460bea3e055b78305e9f7088aa46c304",
                 1,
             ),
-            SaveParserDecision::Verified
+            CatalogParserDecision::Verified
         );
         assert_eq!(
             matrix.save_parser_decision("1.0.5", 1),

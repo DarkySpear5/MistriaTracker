@@ -25,6 +25,7 @@ export type ActiveSnapshot = {
 export type ReadinessReport = {
   catalog: { game_version: string; item_count: number };
   catalog_approved: boolean;
+  catalog_unverified?: boolean;
   companion_log_found: boolean;
 };
 

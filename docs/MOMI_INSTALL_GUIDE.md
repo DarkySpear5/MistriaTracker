@@ -17,7 +17,7 @@ values.
 
 1. Download the latest Windows installer from the
    [official Mistria Tracker Releases page](https://github.com/DarkySpear5/MistriaTracker/releases/latest).
-2. Close Fields of Mistria, run `MistriaTracker-0.1.6-setup.exe`, and install
+2. Close Fields of Mistria, run the downloaded `MistriaTracker-0.1.8-setup.exe`, and install
    it normally. The
    **Add a desktop shortcut** choice is selected by default; untick it if you
    do not want one.

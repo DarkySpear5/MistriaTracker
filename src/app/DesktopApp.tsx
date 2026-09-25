@@ -79,6 +79,7 @@ export function DesktopApp({
   const [busy, setBusy] = useState(native && !initialJournal);
   const [status, setStatus] = useState("waiting");
   const [error, setError] = useState("");
+  const [catalogUnverified, setCatalogUnverified] = useState(false);
   const [saveImportMessage, setSaveImportMessage] = useState("");
   const [profileKey, setProfileKey] = useState("");
   const [gameDirectory, setGameDirectory] = useState<string | null>(null);
@@ -112,6 +113,7 @@ export function DesktopApp({
       initializing = true;
       setBusy(true);
       setError("");
+      setCatalogUnverified(false);
       try {
         const preferences = await getPreferences();
         if (!alive) return;
@@ -135,7 +137,8 @@ export function DesktopApp({
         const report = await readinessProbe(resolvedGameDirectory, modData);
         modDataDirectory = modData;
         if (!alive) return;
-        if (report.catalog_approved) {
+        setCatalogUnverified(report.catalog_unverified ?? false);
+        if (report.catalog_approved || report.catalog_unverified) {
           if (report.companion_log_found && !sessionStarted.current) {
             await startLiveTracking(resolvedGameDirectory, modData);
             sessionStarted.current = true;
@@ -145,7 +148,7 @@ export function DesktopApp({
           await refresh();
         } else {
           setStatus("offline");
-          setError("compatibility");
+          setError("catalog-unsupported");
         }
       } catch {
         if (alive) {
@@ -327,7 +330,8 @@ export function DesktopApp({
   };
   const screen = journal
     ? {
-        journal,
+      journal,
+        hintsEnabled: hints,
         language,
         filters,
         onEntry: openEntry,
@@ -422,11 +426,24 @@ export function DesktopApp({
                 <div className="notice" role="status">
                   <Icon name="info" size={16} />
                   <span>
-                    {tr(language, error === "game-directory" ? "gameFolderNotFound" : "refreshPreserved")}
+                    {tr(
+                      language,
+                      error === "game-directory"
+                        ? "gameFolderNotFound"
+                        : error === "catalog-unsupported"
+                          ? "catalogUnsupported"
+                          : "refreshPreserved",
+                    )}
                   </span>
                   <button onClick={() => void initializeRef.current()}>
                     {tr(language, "retry")}
                   </button>
+                </div>
+              )}
+              {!busy && catalogUnverified && (
+                <div className="notice" role="status">
+                  <Icon name="info" size={16} />
+                  <span>{tr(language, "catalogUnverified")}</span>
                 </div>
               )}
               {view === "settings" ? (
@@ -480,10 +497,16 @@ export function DesktopApp({
                   <div className="settings-card">
                     <h2>{tr(language, "language")}</h2>
                     <p>{languageCopy.autoDetectHelp}</p>
-                    <div className="language-buttons">
+                    <div
+                      aria-label={tr(language, "language")}
+                      className="language-buttons"
+                      role="group"
+                    >
                       <button
                         aria-pressed={languagePreference === "auto"}
+                        className="language-option"
                         onClick={() => void persist("auto", spoilers, hints)}
+                        type="button"
                       >
                         {languageCopy.autoDetect}
                       </button>
@@ -491,7 +514,9 @@ export function DesktopApp({
                         <button
                           key={option.value}
                           aria-pressed={languagePreference === option.value}
+                          className="language-option"
                           onClick={() => void persist(option.value, spoilers, hints)}
+                          type="button"
                         >
                           {languageCopy[option.label]}
                         </button>
