@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.9 — 2026-09-28
+
+- Added verified save-import and live-event compatibility for Fields of Mistria 1.0.6.
+- Preserved the narrow, read-only 1.0.6 import surface so unknown save fields are never guessed.
+- Kept unfamiliar 1.0.6 catalog fingerprints in the safe unverified-refresh path instead of blocking read-only catalog loading.
+- Updated the Windows installer, portable package, metadata, and build workflow to 0.1.9.
+
 ## 0.1.8 — 2026-09-25
 
 - Treat well-formed but unfamiliar game-catalog fingerprints as **unverified**

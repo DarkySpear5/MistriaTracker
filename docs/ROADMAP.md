@@ -35,7 +35,7 @@ blocked until separately verified.
 
 ## 3. Unified language support
 
-Status: 0.1.8 publishes complete interface dictionaries and game-catalog
+Status: 0.1.9 publishes complete interface dictionaries and game-catalog
 extraction for all eight planned languages.
 
 - One language choice only: **Auto-detect** or one manual language.
@@ -49,7 +49,7 @@ extraction for all eight planned languages.
 
 ## 4. GitHub update delivery — deferred
 
-Status: explicitly deferred. Do not implement an auto-updater in the 0.1.8
+Status: explicitly deferred. Do not implement an auto-updater in the 0.1.9
 release; it needs a separate security and release decision later.
 
 - Check GitHub releases only when the player explicitly enables update checks.
@@ -61,7 +61,7 @@ release; it needs a separate security and release decision later.
 
 ## 5. Useful, spoiler-safe hints
 
-Status: published in 0.1.8 after isolated testing.
+Status: published in 0.1.9 after isolated testing.
 Hints use only verified game-definition area, season, and recipe-source facts.
 Unknown facts remain omitted and the category-level clue remains available.
 

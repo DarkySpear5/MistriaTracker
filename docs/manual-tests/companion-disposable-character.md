@@ -1,6 +1,6 @@
 # Companion disposable-character checklist
 
-This checklist validates the approved Fields of Mistria `1.0.5` live-tracking
+This checklist validates the approved Fields of Mistria `1.0.6` live-tracking
 surface. Use only a newly created disposable character. Do not open, copy,
 select, hash, move, or otherwise inspect an important save during this test.
 
