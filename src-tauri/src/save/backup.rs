@@ -42,7 +42,7 @@ pub fn discoveries_from_bytes(
     let vault = VaultReader::read(bytes)?;
     let game_version = EvidenceExtractor::game_version(&vault)?;
     let evidence = EvidenceExtractor::new(profile_id.clone(), compatibility).extract(&vault)?;
-    let journal = if matches!(game_version.as_str(), "1.0.4" | "1.0.5") {
+    let journal = if matches!(game_version.as_str(), "1.0.4" | "1.0.5" | "1.0.6") {
         crate::journal::evidence::JournalEvidence::from_vault(&vault)?
     } else {
         Default::default()
@@ -102,6 +102,28 @@ mod tests {
         .unwrap();
 
         assert_eq!(discoveries.profile_id.as_str(), "331655283");
+        assert_eq!(discoveries.items, vec![ItemId::new("test_ore").unwrap()]);
+    }
+
+    #[test]
+    fn extracts_1_0_6_discoveries_from_a_tracker_owned_snapshot() {
+        let bytes = vault_bytes(&[
+            (
+                "info",
+                json!({"version":{"major":1,"minor":0,"patch":6,"pre":null}}),
+            ),
+            ("header", json!({"name":"Ari","farm_name":"Test"})),
+            ("player", json!({"items_acquired":["test_ore"]})),
+        ]);
+
+        let discoveries = discoveries_from_bytes(
+            &bytes,
+            ProfileId::new("331655283").unwrap(),
+            &CompatibilityMatrix::embedded().unwrap(),
+        )
+        .unwrap();
+
+        assert_eq!(discoveries.game_version, "1.0.6");
         assert_eq!(discoveries.items, vec![ItemId::new("test_ore").unwrap()]);
     }
 }

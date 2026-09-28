@@ -85,10 +85,10 @@ impl<'a> EvidenceExtractor<'a> {
             }
         }
 
-        // 1.0.4 and 1.0.5 were verified against user-approved snapshots. Their approved
+        // 1.0.4, 1.0.5, and 1.0.6 were verified against user-approved snapshots. Their approved
         // catch-up surface is deliberately narrow: the profile header and the
         // stable `items_acquired` list. Other save fields are not inferred.
-        if matches!(version.as_str(), "1.0.4" | "1.0.5") {
+        if matches!(version.as_str(), "1.0.4" | "1.0.5" | "1.0.6") {
             return self.extract_v1_0_4(vault);
         }
 
@@ -550,6 +550,38 @@ mod tests {
             (
                 "info",
                 json!({"version":{"major":1,"minor":0,"patch":5,"pre":null}}),
+            ),
+            ("header", json!({"name":"Ari","farm_name":"Test"})),
+            (
+                "player",
+                json!({
+                    "items_acquired":["test_ore"],
+                    "inventory":[{"unapproved_shape":true}]
+                }),
+            ),
+        ];
+
+        let values: Vec<_> = extract(&parts, &CompatibilityMatrix::embedded().unwrap())
+            .unwrap()
+            .into_iter()
+            .map(|event| serde_json::to_value(event.fact).unwrap())
+            .collect();
+
+        assert_eq!(
+            values,
+            vec![
+                json!({"type":"profile_seen","name":"Ari","farm_name":"Test"}),
+                json!({"type":"item_owned","item_id":"test_ore","count":1}),
+            ]
+        );
+    }
+
+    #[test]
+    fn embedded_1_0_6_parser_uses_the_same_narrow_verified_surface() {
+        let parts = [
+            (
+                "info",
+                json!({"version":{"major":1,"minor":0,"patch":6,"pre":null}}),
             ),
             ("header", json!({"name":"Ari","farm_name":"Test"})),
             (

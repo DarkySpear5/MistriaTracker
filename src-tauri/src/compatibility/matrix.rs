@@ -243,4 +243,18 @@ mod tests {
             SaveParserDecision::Verified
         );
     }
+
+    #[test]
+    fn embedded_1_0_6_approval_allows_live_events_and_save_imports() {
+        let matrix = CompatibilityMatrix::embedded().unwrap();
+
+        assert_eq!(
+            matrix.decision(&VersionSet::new("1.0.6", "0.1.6", 1)),
+            CompatibilityDecision::FullySupported
+        );
+        assert_eq!(
+            matrix.save_parser_decision("1.0.6", 1),
+            SaveParserDecision::Verified
+        );
+    }
 }
